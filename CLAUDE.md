@@ -22,9 +22,9 @@ python -m http.server 8000
 - **`all-games.html`** - Alternative launcher that embeds games as base64 strings and runs them in sandboxed iframes via blob URLs
 
 ### Individual Games
-Each game is a **self-contained single HTML file** with embedded CSS and JavaScript:
-- `math-game.html` - Octo-Math: turn-based math quiz with Canvas confetti effects
-- `ski-game.html` - Ski & Snow: real-time 2D action game with Canvas rendering and physics
+Games are located in the `games/` subdirectory. Each game is a **self-contained single HTML file** with embedded CSS and JavaScript:
+- `games/math-game.html` - Octo-Math: turn-based math quiz with Canvas confetti effects
+- `games/ski-game.html` - Ski & Snow: real-time 2D action game with Canvas rendering and physics
 
 ### Common Patterns
 
@@ -40,7 +40,7 @@ Each game is a **self-contained single HTML file** with embedded CSS and JavaScr
 
 ### Adding a New Game
 
-1. Create a new self-contained HTML file following the existing game structure
+1. Create a new self-contained HTML file in `games/` following the existing game structure
 2. Add an entry to the `GAMES` array in `index.html`:
 ```javascript
 {
@@ -49,6 +49,6 @@ Each game is a **self-contained single HTML file** with embedded CSS and JavaScr
   desc: 'Game description',
   icon: '🎮',
   theme: 'blue',
-  url: 'my-game.html'
+  url: 'games/my-game.html'
 }
 ```
