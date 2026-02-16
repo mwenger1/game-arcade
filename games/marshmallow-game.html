@@ -629,7 +629,7 @@ function initGame() {
     handY: handStartY,
     handMinY: handMinY,
     handMaxY: handMaxY,
-    handSpeed: 5,
+    handSpeed: 2.5,
 
     // Marshmallow position (calculated from hand + stick)
     mallowX: initialMallowX,
@@ -695,9 +695,9 @@ function updateZones() {
   // Calculate current fire top position
   const fireTop = game.fireBaseY - game.fireHeight + game.fireOffset;
 
-  // Perfect zone is just above the flame tips
-  game.perfectZoneBottom = fireTop - 10;
-  game.perfectZoneTop = fireTop - H * 0.12;
+  // Perfect zone is just above the flame tips - made larger for easier gameplay
+  game.perfectZoneBottom = fireTop - 5;
+  game.perfectZoneTop = fireTop - H * 0.18;
 
   // Burn zone is in/near the flames
   game.burnZoneTop = fireTop + H * 0.03;
