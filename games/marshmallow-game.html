@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Marshmallow Roaster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --night-top: #0a0a1a;
+    --night-mid: #1a1a3e;
+    --night-bot: #2d1b4e;
+    --fire-orange: #ff9f43;
+    --fire-red: #ff6b6b;
+    --fire-yellow: #ffeaa7;
+    --accent-brown: #8b4513;
+    --accent-cream: #f5deb3;
+    --card-bg: rgba(255,255,255,0.08);
+    --card-border: rgba(255,255,255,0.12);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--night-top);
+    color: #fff;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  /* =========== SCREENS =========== */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.35s, transform 0.35s;
+    padding: 1.5rem;
+  }
+  .screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+  }
+
+  .menu-bg {
+    background: linear-gradient(170deg, #0a0a1a 0%, #1a1040 40%, #2d1b4e 100%);
+  }
+
+  .screen h1 {
+    font-family: 'Lilita One', cursive;
+    font-size: clamp(1.8rem, 7vw, 2.8rem);
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .screen h1 .gradient-text {
+    background: linear-gradient(135deg, #ff9f43, #ffeaa7, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .screen .subtitle {
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .go-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    padding: 0.9rem 3rem;
+    background: linear-gradient(135deg, var(--fire-orange), var(--fire-yellow));
+    color: #2d1b4e;
+    border: none;
+    border-radius: 1.2rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: transform 0.15s, filter 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .go-btn:active { transform: scale(0.95); filter: brightness(1.1); }
+
+  .back-link {
+    position: absolute;
+    top: 1rem; left: 1rem;
+    display: flex; align-items: center; gap: 0.3rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+    z-index: 60;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* Menu campfire decoration */
+  .campfire-deco {
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    animation: fireGlow 1s ease-in-out infinite alternate;
+  }
+  @keyframes fireGlow {
+    0% { filter: drop-shadow(0 0 10px #ff6b00) drop-shadow(0 0 20px #ff9f43); transform: scale(1); }
+    100% { filter: drop-shadow(0 0 15px #ff6b00) drop-shadow(0 0 30px #ff9f43); transform: scale(1.05); }
+  }
+
+  /* =========== GAME CANVAS =========== */
+  #gameCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    pointer-events: none;
+  }
+  .hud.hidden { display: none; }
+
+  .hud-item {
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    pointer-events: auto;
+  }
+  .hud-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+  }
+  .hud-value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    color: #fff;
+  }
+  .hud-value.golden { color: #ffd700; }
+  .hud-value.burning { color: #ff4444; }
+
+  .hud-menu-btn {
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    border: none;
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  /* Mobile controls */
+  .mobile-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 40;
+    display: none;
+    padding: 0.8rem 1rem 1.2rem;
+    justify-content: center;
+    align-items: flex-end;
+    pointer-events: none;
+    gap: 1rem;
+  }
+  .mobile-controls.visible { display: flex; }
+
+  .ctrl-btn {
+    width: 70px; height: 70px;
+    background: rgba(255,159,67,0.15);
+    border: 2.5px solid rgba(255,159,67,0.8);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: rgb(255,200,100);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.1s;
+    pointer-events: auto;
+  }
+  .ctrl-btn:active, .ctrl-btn.pressed {
+    background: rgba(255,159,67,0.35);
+  }
+
+  /* Result overlay */
+  .result-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    padding: 1.5rem;
+  }
+  .result-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .result-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 1.4rem;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+  }
+  .result-emoji { font-size: 4rem; margin-bottom: 0.5rem; }
+  .result-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+  }
+  .result-score { color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 0.3rem; }
+  .result-best { color: var(--fire-orange); font-weight: 800; font-size: 0.85rem; margin-bottom: 1rem; }
+  .result-btns { display: flex; flex-direction: column; gap: 0.5rem; }
+  .result-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    text-decoration: none;
+    text-align: center;
+    display: block;
+  }
+  .result-btn:active { transform: scale(0.96); }
+  .result-primary {
+    background: linear-gradient(135deg, var(--fire-orange), var(--fire-yellow));
+    color: #2d1b4e;
+  }
+  .result-secondary {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+  }
+
+  /* Stars background for menu */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle var(--dur, 3s) ease-in-out infinite alternate;
+    opacity: 0;
+  }
+  @keyframes twinkle {
+    0% { opacity: 0.1; transform: scale(0.8); }
+    100% { opacity: var(--max-o, 0.8); transform: scale(1.2); }
+  }
+
+  /* Firefly particles for menu */
+  .firefly {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: #ffd700;
+    border-radius: 50%;
+    animation: fireflyFloat 8s ease-in-out infinite;
+    opacity: 0;
+    box-shadow: 0 0 6px #ffd700, 0 0 12px #ff9f43;
+  }
+  @keyframes fireflyFloat {
+    0%, 100% { opacity: 0; transform: translate(0, 0); }
+    25% { opacity: 0.8; transform: translate(var(--dx, 20px), var(--dy, -30px)); }
+    50% { opacity: 0.4; transform: translate(calc(var(--dx, 20px) * 1.5), calc(var(--dy, -30px) * 0.5)); }
+    75% { opacity: 0.7; transform: translate(var(--dx, 20px), var(--dy, -30px)); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<canvas id="gameCanvas"></canvas>
+
+<!-- ===== START SCREEN ===== -->
+<div class="screen menu-bg" id="startScreen">
+  <a href="../index.html" class="back-link">< Home</a>
+
+  <div class="campfire-deco">🏕️</div>
+  <h1><span class="gradient-text">Marshmallow Roaster</span></h1>
+  <p class="subtitle">Roast the perfect golden marshmallow!</p>
+
+  <button class="go-btn" onclick="startGame()">Start Roasting!</button>
+</div>
+
+<!-- ===== HUD ===== -->
+<div class="hud hidden" id="hud">
+  <div class="hud-item">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="hudScore">0</div>
+  </div>
+  <div class="hud-item">
+    <div class="hud-label">Status</div>
+    <div class="hud-value" id="hudStatus">Raw</div>
+  </div>
+  <button class="hud-menu-btn" onclick="backToMenu()">✕</button>
+</div>
+
+<!-- ===== MOBILE CONTROLS ===== -->
+<div class="mobile-controls" id="mobileControls">
+  <button class="ctrl-btn" id="btnUp">▲</button>
+  <button class="ctrl-btn" id="btnDown">▼</button>
+</div>
+
+<!-- ===== CONTROLS MODAL ===== -->
+<div class="controls-overlay" id="controlsOverlay">
+  <div class="controls-card">
+    <h2>How to Roast</h2>
+    <div class="controls-row">
+      <div class="key-icon">▲</div>
+      <div class="key-icon">▼</div>
+      <div class="key-desc">Move marshmallow up & down</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon" style="width: auto; padding: 0 12px;">🎯</div>
+      <div class="key-desc">Keep it in the golden zone!</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon" style="width: auto; padding: 0 12px;">⚠️</div>
+      <div class="key-desc">Don't let it catch fire!</div>
+    </div>
+    <button class="controls-go-btn" onclick="dismissControls()">Let's Roast!</button>
+  </div>
+</div>
+
+<!-- ===== RESULT OVERLAY ===== -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <div class="result-emoji" id="resultEmoji">🍡</div>
+    <div class="result-title" id="resultTitle">Perfect S'more!</div>
+    <div class="result-score" id="resultScore">Score: 0</div>
+    <div class="result-best" id="resultBest">Best: 0</div>
+    <div class="result-btns">
+      <button class="result-btn result-primary" onclick="restartGame()">Roast Another!</button>
+      <a href="../index.html" class="result-btn result-secondary">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== SETUP ====================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Detect mobile
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+// Best score
+let bestScore = parseInt(localStorage.getItem('marshmallowBest') || '0', 10);
+
+// ==================== GAME STATE ====================
+
+let game = null;
+let animId = null;
+let gameRunning = false;
+let shownControls = false;
+
+// Input state
+const keys = { up: false, down: false };
+
+// Marshmallow states
+const MALLOW_RAW = 0;
+const MALLOW_TOASTING = 1;
+const MALLOW_BURNING = 2;
+const MALLOW_BURNT = 3;
+
+// ==================== AUDIO CONTEXT ====================
+
+let audioCtx = null;
+let fireNoise = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Create crackling fire noise
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      // Random crackles
+      if (Math.random() < 0.001) {
+        data[i] = (Math.random() - 0.5) * 0.3;
+      } else {
+        data[i] = (Math.random() - 0.5) * 0.02;
+      }
+    }
+
+    fireNoise = audioCtx.createBufferSource();
+    fireNoise.buffer = buffer;
+    fireNoise.loop = true;
+
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.15;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+
+    fireNoise.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    fireNoise.start();
+  } catch (e) {
+    // Audio not supported
+  }
+}
+
+// ==================== GAME INIT ====================
+
+function initGame() {
+  // Fixed stick properties - stick pivots from hand position
+  const stickLength = Math.min(W, H) * 0.55; // Fixed length
+  const pivotX = W * 0.08; // Hand/pivot point (left side of screen)
+  const pivotY = H * 0.48; // Middle height
+
+  // Angle range for stick rotation (in radians)
+  const minAngle = -0.45; // Pointing more upward
+  const maxAngle = 0.35;  // Pointing more downward
+
+  game = {
+    // Stick pivot and angle
+    stickPivotX: pivotX,
+    stickPivotY: pivotY,
+    stickLength: stickLength,
+    stickAngle: -0.1, // Current angle
+    stickMinAngle: minAngle,
+    stickMaxAngle: maxAngle,
+    stickAngleSpeed: 0.025,
+
+    // Marshmallow (position calculated from stick angle)
+    mallowX: pivotX + Math.cos(-0.1) * stickLength,
+    mallowY: pivotY + Math.sin(-0.1) * stickLength,
+    mallowRotation: 0,
+    mallowRotationSpeed: 0.02,
+
+    // Fire
+    fireBaseY: H * 0.78,
+    fireHeight: H * 0.18,
+    fireOffset: 0, // Oscillating fire height
+    firePhase: 0,
+    fireSpeed: 0.015, // How fast fire oscillates
+    fireAmplitude: H * 0.08, // How much fire moves
+
+    // Zones
+    perfectZoneTop: 0,
+    perfectZoneBottom: 0,
+    burnZoneTop: 0,
+
+    // Roasting state
+    roastLevel: 0, // 0 = raw, 100 = perfect, 150+ = burnt
+    mallowState: MALLOW_RAW,
+    mallowOnFire: false,
+    fireTimer: 0, // How long on fire
+
+    // Score
+    score: 0,
+    scoreMultiplier: 1,
+    perfectTime: 0, // Time spent in perfect zone
+
+    // Difficulty
+    level: 1,
+    levelTimer: 0,
+
+    // Visual effects
+    fireParticles: [],
+    smokeParticles: [],
+    sparkParticles: [],
+    mallowGlow: 0,
+
+    // Game state
+    gameOver: false,
+    gameOverTimer: 0,
+
+    frameCount: 0,
+  };
+
+  // Pre-fill particles
+  for (let i = 0; i < 40; i++) {
+    game.fireParticles.push(createFireParticle());
+  }
+  for (let i = 0; i < 15; i++) {
+    game.smokeParticles.push(createSmokeParticle());
+  }
+
+  updateZones();
+}
+
+function updateZones() {
+  // Calculate current fire top position
+  const fireTop = game.fireBaseY - game.fireHeight + game.fireOffset;
+
+  // Perfect zone is just above the flame tips
+  game.perfectZoneBottom = fireTop - 10;
+  game.perfectZoneTop = fireTop - H * 0.12;
+
+  // Burn zone is in/near the flames
+  game.burnZoneTop = fireTop + H * 0.03;
+}
+
+// ==================== PARTICLE SYSTEMS ====================
+
+function createFireParticle() {
+  const fireWidth = W * 0.2;
+  return {
+    x: W * 0.5 + (Math.random() - 0.5) * fireWidth,
+    y: game ? game.fireBaseY : H * 0.78,
+    vx: (Math.random() - 0.5) * 1,
+    vy: -2 - Math.random() * 3,
+    life: 40 + Math.random() * 30,
+    maxLife: 40 + Math.random() * 30,
+    size: 8 + Math.random() * 15,
+    hue: Math.random() < 0.3 ? 50 : (Math.random() < 0.5 ? 30 : 15), // yellow, orange, red
+  };
+}
+
+function createSmokeParticle() {
+  return {
+    x: W * 0.5 + (Math.random() - 0.5) * 40,
+    y: game ? (game.fireBaseY - game.fireHeight - 20) : H * 0.58,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: -0.5 - Math.random() * 1,
+    life: 80 + Math.random() * 60,
+    maxLife: 80 + Math.random() * 60,
+    size: 15 + Math.random() * 20,
+    opacity: 0.1 + Math.random() * 0.15,
+  };
+}
+
+function createSparkParticle(x, y) {
+  return {
+    x: x,
+    y: y,
+    vx: (Math.random() - 0.5) * 4,
+    vy: -3 - Math.random() * 4,
+    life: 20 + Math.random() * 20,
+    maxLife: 20 + Math.random() * 20,
+    size: 2 + Math.random() * 3,
+  };
+}
+
+// ==================== DRAWING ====================
+
+function drawBackground() {
+  // Night sky gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#0a0a1a');
+  skyGrad.addColorStop(0.4, '#1a1040');
+  skyGrad.addColorStop(0.7, '#2d1b4e');
+  skyGrad.addColorStop(1, '#1a1a2e');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 50; i++) {
+    const x = (i * 137.5) % W;
+    const y = (i * 89.3) % (H * 0.5);
+    const twinkle = Math.sin(game.frameCount * 0.03 + i) * 0.5 + 0.5;
+    ctx.globalAlpha = 0.3 + twinkle * 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 1 + Math.random(), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Moon
+  ctx.fillStyle = '#f5f5dc';
+  ctx.beginPath();
+  ctx.arc(W * 0.85, H * 0.12, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#e8e8c8';
+  ctx.beginPath();
+  ctx.arc(W * 0.85 - 3, H * 0.12 + 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(W * 0.85 + 5, H * 0.12 - 5, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Distant treeline
+  ctx.fillStyle = '#0d1117';
+  for (let x = 0; x < W + 40; x += 35) {
+    const treeH = 50 + Math.sin(x * 0.1) * 20;
+    const baseY = H * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(x - 18, baseY);
+    ctx.lineTo(x, baseY - treeH);
+    ctx.lineTo(x + 18, baseY);
+    ctx.fill();
+  }
+
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  groundGrad.addColorStop(0, '#1a2f1a');
+  groundGrad.addColorStop(0.3, '#1a3520');
+  groundGrad.addColorStop(1, '#0d1f0d');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+  // Grass tufts near fire
+  ctx.fillStyle = '#2d4a2d';
+  for (let i = 0; i < 20; i++) {
+    const gx = i * (W / 20) + 10;
+    const gy = H * 0.85 + Math.sin(i * 1.5) * 8;
+    ctx.beginPath();
+    ctx.moveTo(gx - 5, gy);
+    ctx.quadraticCurveTo(gx - 2, gy - 12, gx, gy);
+    ctx.quadraticCurveTo(gx + 2, gy - 14, gx + 4, gy);
+    ctx.fill();
+  }
+}
+
+function drawStump() {
+  // S'mores ingredients stump (right side)
+  const stumpX = W * 0.78;
+  const stumpY = H * 0.72;
+
+  // Fire glow on stump
+  const glowIntensity = 0.15 + Math.sin(game.frameCount * 0.1) * 0.05;
+  ctx.fillStyle = `rgba(255, 150, 50, ${glowIntensity})`;
+  ctx.beginPath();
+  ctx.ellipse(stumpX, stumpY + 10, 50, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stump body
+  ctx.fillStyle = '#4a3728';
+  ctx.beginPath();
+  ctx.ellipse(stumpX, stumpY + 25, 35, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(stumpX - 35, stumpY - 15, 70, 40);
+
+  // Stump top
+  ctx.fillStyle = '#5a4738';
+  ctx.beginPath();
+  ctx.ellipse(stumpX, stumpY - 15, 35, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wood rings
+  ctx.strokeStyle = '#6a5748';
+  ctx.lineWidth = 1;
+  for (let r = 10; r < 30; r += 8) {
+    ctx.beginPath();
+    ctx.ellipse(stumpX, stumpY - 15, r, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Graham crackers (stacked)
+  ctx.fillStyle = '#d4a76a';
+  ctx.fillRect(stumpX - 18, stumpY - 28, 22, 4);
+  ctx.fillRect(stumpX - 16, stumpY - 33, 22, 4);
+  // Cracker texture
+  ctx.fillStyle = '#c49a5a';
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(stumpX - 15 + i * 7, stumpY - 27, 1, 2);
+    ctx.fillRect(stumpX - 13 + i * 7, stumpY - 32, 1, 2);
+  }
+
+  // Chocolate squares
+  ctx.fillStyle = '#3d2314';
+  ctx.fillRect(stumpX + 5, stumpY - 30, 16, 10);
+  ctx.fillRect(stumpX + 8, stumpY - 32, 16, 10);
+  // Chocolate segments
+  ctx.strokeStyle = '#2d1810';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(stumpX + 13, stumpY - 30);
+  ctx.lineTo(stumpX + 13, stumpY - 20);
+  ctx.moveTo(stumpX + 16, stumpY - 32);
+  ctx.lineTo(stumpX + 16, stumpY - 22);
+  ctx.stroke();
+}
+
+function drawFirePit() {
+  const fireX = W * 0.5;
+  const fireY = game.fireBaseY;
+
+  // Fire glow on ground
+  const glowRadius = 120 + Math.sin(game.frameCount * 0.15) * 20;
+  const glowGrad = ctx.createRadialGradient(fireX, fireY, 0, fireX, fireY, glowRadius);
+  glowGrad.addColorStop(0, 'rgba(255, 150, 50, 0.4)');
+  glowGrad.addColorStop(0.5, 'rgba(255, 100, 30, 0.15)');
+  glowGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(fireX - glowRadius, fireY - glowRadius * 0.5, glowRadius * 2, glowRadius);
+
+  // Stone ring
+  ctx.fillStyle = '#4a4a4a';
+  const stoneCount = 12;
+  for (let i = 0; i < stoneCount; i++) {
+    const angle = (i / stoneCount) * Math.PI * 2;
+    const sx = fireX + Math.cos(angle) * 55;
+    const sy = fireY + Math.sin(angle) * 18 + 5;
+    const sw = 18 + Math.sin(i * 2) * 4;
+    const sh = 12 + Math.cos(i * 3) * 3;
+
+    // Stone shadow
+    ctx.fillStyle = '#2a2a2a';
+    ctx.beginPath();
+    ctx.ellipse(sx + 2, sy + 2, sw / 2, sh / 2, angle * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Stone
+    ctx.fillStyle = '#5a5a5a';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, sw / 2, sh / 2, angle * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Stone highlight
+    ctx.fillStyle = `rgba(255, 150, 80, ${0.1 + Math.sin(game.frameCount * 0.1 + i) * 0.05})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, sw / 2, sh / 2, angle * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Logs
+  ctx.fillStyle = '#3d2817';
+  // Log 1
+  ctx.save();
+  ctx.translate(fireX - 25, fireY);
+  ctx.rotate(-0.3);
+  ctx.beginPath();
+  ctx.roundRect(-25, -6, 50, 12, 4);
+  ctx.fill();
+  ctx.restore();
+  // Log 2
+  ctx.save();
+  ctx.translate(fireX + 25, fireY);
+  ctx.rotate(0.3);
+  ctx.beginPath();
+  ctx.roundRect(-25, -6, 50, 12, 4);
+  ctx.fill();
+  ctx.restore();
+  // Log ends (glowing)
+  const logGlow = 0.3 + Math.sin(game.frameCount * 0.2) * 0.2;
+  ctx.fillStyle = `rgba(255, 100, 0, ${logGlow})`;
+  ctx.beginPath();
+  ctx.arc(fireX - 45, fireY - 3, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(fireX + 45, fireY - 3, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawFire() {
+  const fireX = W * 0.5;
+  const fireY = game.fireBaseY;
+  const fireTop = fireY - game.fireHeight + game.fireOffset;
+
+  // Update and draw fire particles
+  game.fireParticles.forEach((p, i) => {
+    p.x += p.vx + Math.sin(game.frameCount * 0.1 + i) * 0.5;
+    p.y += p.vy;
+    p.life--;
+    p.size *= 0.97;
+
+    if (p.life <= 0 || p.size < 2) {
+      Object.assign(p, createFireParticle());
+      p.y = fireY;
+    }
+
+    const alpha = (p.life / p.maxLife) * 0.9;
+    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+    gradient.addColorStop(0, `hsla(${p.hue}, 100%, 60%, ${alpha})`);
+    gradient.addColorStop(0.4, `hsla(${p.hue - 10}, 100%, 50%, ${alpha * 0.7})`);
+    gradient.addColorStop(1, `hsla(${p.hue - 20}, 100%, 30%, 0)`);
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Main flame shape
+  const flameGrad = ctx.createLinearGradient(fireX, fireY, fireX, fireTop);
+  flameGrad.addColorStop(0, 'rgba(255, 100, 0, 0.9)');
+  flameGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.8)');
+  flameGrad.addColorStop(0.6, 'rgba(255, 200, 50, 0.6)');
+  flameGrad.addColorStop(1, 'rgba(255, 255, 100, 0)');
+
+  ctx.fillStyle = flameGrad;
+  ctx.beginPath();
+  const waveOffset = Math.sin(game.frameCount * 0.15) * 8;
+  ctx.moveTo(fireX - 40, fireY);
+  ctx.quadraticCurveTo(fireX - 30 + waveOffset, fireY - game.fireHeight * 0.5, fireX - 10, fireTop + 20);
+  ctx.quadraticCurveTo(fireX + waveOffset * 0.5, fireTop - 10, fireX + 10, fireTop + 20);
+  ctx.quadraticCurveTo(fireX + 30 - waveOffset, fireY - game.fireHeight * 0.5, fireX + 40, fireY);
+  ctx.fill();
+
+  // Inner bright core
+  const coreGrad = ctx.createLinearGradient(fireX, fireY - 10, fireX, fireTop + 30);
+  coreGrad.addColorStop(0, 'rgba(255, 255, 200, 0.8)');
+  coreGrad.addColorStop(0.5, 'rgba(255, 220, 100, 0.5)');
+  coreGrad.addColorStop(1, 'rgba(255, 180, 50, 0)');
+
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.moveTo(fireX - 20, fireY - 10);
+  ctx.quadraticCurveTo(fireX + waveOffset * 0.3, fireTop + 40, fireX + 20, fireY - 10);
+  ctx.fill();
+}
+
+function drawSmoke() {
+  game.smokeParticles.forEach((p, i) => {
+    p.x += p.vx + Math.sin(game.frameCount * 0.02 + i) * 0.3;
+    p.y += p.vy;
+    p.life--;
+    p.size += 0.2;
+
+    if (p.life <= 0) {
+      Object.assign(p, createSmokeParticle());
+    }
+
+    const alpha = (p.life / p.maxLife) * p.opacity;
+    ctx.fillStyle = `rgba(100, 100, 120, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawStick() {
+  const pivotX = game.stickPivotX;
+  const pivotY = game.stickPivotY;
+  const length = game.stickLength;
+  const angle = game.stickAngle;
+
+  // Calculate end point (where marshmallow attaches)
+  const endX = pivotX + Math.cos(angle) * length;
+  const endY = pivotY + Math.sin(angle) * length;
+
+  // Store for marshmallow drawing
+  game.mallowX = endX;
+  game.mallowY = endY;
+
+  // Natural stick has slight curve/wobble - use bezier with subtle control points
+  // The stick bends slightly downward due to weight
+  const bendAmount = 12 + (angle - game.stickMinAngle) / (game.stickMaxAngle - game.stickMinAngle) * 8;
+  const midX = pivotX + Math.cos(angle) * length * 0.5;
+  const midY = pivotY + Math.sin(angle) * length * 0.5 + bendAmount;
+
+  // Slight irregularity for natural look
+  const wobble1X = pivotX + Math.cos(angle) * length * 0.3;
+  const wobble1Y = pivotY + Math.sin(angle) * length * 0.3 + bendAmount * 0.4;
+  const wobble2X = pivotX + Math.cos(angle) * length * 0.7;
+  const wobble2Y = pivotY + Math.sin(angle) * length * 0.7 + bendAmount * 0.8;
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Stick shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.moveTo(pivotX + 4, pivotY + 4);
+  ctx.bezierCurveTo(wobble1X + 4, wobble1Y + 4, wobble2X + 4, wobble2Y + 4, endX + 4, endY + 4);
+  ctx.stroke();
+
+  // Main stick - dark bark base
+  ctx.strokeStyle = '#3d2817';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.bezierCurveTo(wobble1X, wobble1Y, wobble2X, wobble2Y, endX, endY);
+  ctx.stroke();
+
+  // Lighter wood layer
+  const woodGrad = ctx.createLinearGradient(pivotX, pivotY, endX, endY);
+  woodGrad.addColorStop(0, '#6B5344');
+  woodGrad.addColorStop(0.2, '#7a6350');
+  woodGrad.addColorStop(0.4, '#5d4a3a');
+  woodGrad.addColorStop(0.6, '#6B5344');
+  woodGrad.addColorStop(0.8, '#54433a');
+  woodGrad.addColorStop(1, '#4a3828');
+
+  ctx.strokeStyle = woodGrad;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.bezierCurveTo(wobble1X, wobble1Y, wobble2X, wobble2Y, endX, endY);
+  ctx.stroke();
+
+  // Bark texture - small dark lines/knots along the stick
+  ctx.strokeStyle = '#2d1810';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 8; i++) {
+    const t = 0.1 + i * 0.1 + (Math.sin(i * 7.3) * 0.03); // Slightly irregular spacing
+    const px = pivotX + (endX - pivotX) * t;
+    const py = pivotY + (endY - pivotY) * t + bendAmount * t * (1 - t) * 4;
+
+    // Small bark marks
+    const markAngle = angle + Math.PI / 2 + (Math.sin(i * 3.7) * 0.3);
+    const markLen = 2 + Math.sin(i * 5.1) * 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(px - Math.cos(markAngle) * markLen, py - Math.sin(markAngle) * markLen);
+    ctx.lineTo(px + Math.cos(markAngle) * markLen, py + Math.sin(markAngle) * markLen);
+    ctx.stroke();
+  }
+
+  // Occasional knots
+  ctx.fillStyle = '#2d1810';
+  const knot1T = 0.25;
+  const knot1X = pivotX + (endX - pivotX) * knot1T;
+  const knot1Y = pivotY + (endY - pivotY) * knot1T + bendAmount * knot1T * (1 - knot1T) * 4;
+  ctx.beginPath();
+  ctx.ellipse(knot1X, knot1Y + 1, 3, 2, angle, 0, Math.PI * 2);
+  ctx.fill();
+
+  const knot2T = 0.6;
+  const knot2X = pivotX + (endX - pivotX) * knot2T;
+  const knot2Y = pivotY + (endY - pivotY) * knot2T + bendAmount * knot2T * (1 - knot2T) * 4;
+  ctx.beginPath();
+  ctx.ellipse(knot2X, knot2Y - 1, 2, 1.5, angle + 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Top highlight for 3D effect
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY - 2);
+  ctx.bezierCurveTo(wobble1X, wobble1Y - 2, wobble2X, wobble2Y - 2, endX, endY - 2);
+  ctx.stroke();
+
+  // Fire glow on stick (near the end)
+  const glowIntensity = 0.15 + Math.sin(game.frameCount * 0.1) * 0.05;
+  const glowT = 0.85;
+  const glowX = pivotX + (endX - pivotX) * glowT;
+  const glowY = pivotY + (endY - pivotY) * glowT + bendAmount * glowT * (1 - glowT) * 4;
+
+  const fireGlow = ctx.createRadialGradient(glowX, glowY + 20, 0, glowX, glowY + 20, 40);
+  fireGlow.addColorStop(0, `rgba(255, 150, 50, ${glowIntensity})`);
+  fireGlow.addColorStop(1, 'rgba(255, 100, 30, 0)');
+  ctx.fillStyle = fireGlow;
+  ctx.fillRect(glowX - 40, glowY - 20, 80, 80);
+}
+
+function drawMarshmallow() {
+  const x = game.mallowX;
+  const y = game.mallowY;
+  const rotation = game.mallowRotation;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+
+  // Size varies slightly with roast
+  const baseSize = 22;
+  const size = baseSize + (game.roastLevel > 100 ? (game.roastLevel - 100) * 0.05 : 0);
+
+  // Determine color based on roast level
+  let baseColor, shadowColor, highlightColor;
+
+  if (game.roastLevel < 20) {
+    // Raw - white
+    baseColor = '#f5f5f5';
+    shadowColor = '#e0e0e0';
+    highlightColor = '#ffffff';
+  } else if (game.roastLevel < 50) {
+    // Warming - slight cream
+    const t = (game.roastLevel - 20) / 30;
+    baseColor = lerpColor('#f5f5f5', '#f5e6d3', t);
+    shadowColor = lerpColor('#e0e0e0', '#e0d0b8', t);
+    highlightColor = '#ffffff';
+  } else if (game.roastLevel < 80) {
+    // Light golden
+    const t = (game.roastLevel - 50) / 30;
+    baseColor = lerpColor('#f5e6d3', '#daa520', t);
+    shadowColor = lerpColor('#e0d0b8', '#b8860b', t);
+    highlightColor = lerpColor('#ffffff', '#ffd700', t);
+  } else if (game.roastLevel < 100) {
+    // Perfect golden brown
+    const t = (game.roastLevel - 80) / 20;
+    baseColor = lerpColor('#daa520', '#cd853f', t);
+    shadowColor = lerpColor('#b8860b', '#8b4513', t);
+    highlightColor = lerpColor('#ffd700', '#daa520', t);
+  } else if (game.roastLevel < 130) {
+    // Getting dark
+    const t = (game.roastLevel - 100) / 30;
+    baseColor = lerpColor('#cd853f', '#4a3728', t);
+    shadowColor = lerpColor('#8b4513', '#2d1810', t);
+    highlightColor = lerpColor('#daa520', '#8b4513', t);
+  } else {
+    // Burnt black
+    baseColor = '#1a1a1a';
+    shadowColor = '#0a0a0a';
+    highlightColor = '#3a3a3a';
+  }
+
+  // Fire glow when marshmallow is on fire
+  if (game.mallowOnFire) {
+    const fireGlow = 0.5 + Math.sin(game.frameCount * 0.3) * 0.3;
+    const glowGrad = ctx.createRadialGradient(0, 0, size, 0, 0, size * 2.5);
+    glowGrad.addColorStop(0, `rgba(255, 100, 0, ${fireGlow})`);
+    glowGrad.addColorStop(0.5, `rgba(255, 50, 0, ${fireGlow * 0.5})`);
+    glowGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Marshmallow shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(3, 3, size * 0.9, size * 1.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Main marshmallow body (cylinder-ish)
+  const bodyGrad = ctx.createLinearGradient(-size, 0, size, 0);
+  bodyGrad.addColorStop(0, shadowColor);
+  bodyGrad.addColorStop(0.3, baseColor);
+  bodyGrad.addColorStop(0.7, baseColor);
+  bodyGrad.addColorStop(1, shadowColor);
+
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size * 0.85, size * 1.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Top highlight
+  ctx.fillStyle = highlightColor;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  ctx.ellipse(-size * 0.2, -size * 0.4, size * 0.3, size * 0.2, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Roast spots (gradual browning pattern)
+  if (game.roastLevel > 30) {
+    const spotIntensity = Math.min((game.roastLevel - 30) / 70, 1);
+    ctx.fillStyle = `rgba(139, 69, 19, ${spotIntensity * 0.5})`;
+
+    // Random-looking but consistent spots
+    for (let i = 0; i < 5; i++) {
+      const angle = i * 1.2 + rotation * 2;
+      const spotX = Math.cos(angle) * size * 0.5;
+      const spotY = Math.sin(angle) * size * 0.7;
+      const spotSize = 4 + (i % 3) * 2;
+      ctx.beginPath();
+      ctx.arc(spotX, spotY, spotSize * spotIntensity, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Fire on marshmallow
+  if (game.mallowOnFire) {
+    // Mini flames
+    for (let i = 0; i < 5; i++) {
+      const flameAngle = (i / 5) * Math.PI * 2 + game.frameCount * 0.1;
+      const flameX = Math.cos(flameAngle) * size * 0.6;
+      const flameY = Math.sin(flameAngle) * size * 0.8 - 5;
+      const flameH = 12 + Math.sin(game.frameCount * 0.3 + i) * 5;
+
+      const flameGrad = ctx.createLinearGradient(flameX, flameY, flameX, flameY - flameH);
+      flameGrad.addColorStop(0, 'rgba(255, 100, 0, 0.9)');
+      flameGrad.addColorStop(0.5, 'rgba(255, 200, 0, 0.6)');
+      flameGrad.addColorStop(1, 'rgba(255, 255, 0, 0)');
+
+      ctx.fillStyle = flameGrad;
+      ctx.beginPath();
+      ctx.moveTo(flameX - 4, flameY);
+      ctx.quadraticCurveTo(flameX, flameY - flameH, flameX + 4, flameY);
+      ctx.fill();
+    }
+
+    // Spawn sparks
+    if (game.frameCount % 5 === 0) {
+      game.sparkParticles.push(createSparkParticle(x, y - size));
+    }
+  }
+
+  // Stick insertion point
+  ctx.fillStyle = '#6B5344';
+  ctx.beginPath();
+  ctx.ellipse(0, size * 0.9, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawSparks() {
+  game.sparkParticles.forEach((p, i) => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15; // gravity
+    p.life--;
+
+    const alpha = p.life / p.maxLife;
+    ctx.fillStyle = `rgba(255, 200, 50, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  game.sparkParticles = game.sparkParticles.filter(p => p.life > 0);
+}
+
+function drawPerfectZone() {
+  // Visual indicator for the perfect roasting zone
+  // Zone spans horizontally where marshmallow can reach
+  const zoneLeft = W * 0.35;
+  const zoneRight = W * 0.75;
+  const zoneTop = game.perfectZoneTop;
+  const zoneBot = game.perfectZoneBottom;
+  const zoneWidth = zoneRight - zoneLeft;
+
+  // Subtle gradient zone indicator
+  const zoneGrad = ctx.createLinearGradient(0, zoneTop, 0, zoneBot);
+  zoneGrad.addColorStop(0, 'rgba(100, 255, 100, 0.03)');
+  zoneGrad.addColorStop(0.5, 'rgba(100, 255, 100, 0.08)');
+  zoneGrad.addColorStop(1, 'rgba(100, 255, 100, 0.03)');
+
+  ctx.fillStyle = zoneGrad;
+  ctx.fillRect(zoneLeft, zoneTop, zoneWidth, zoneBot - zoneTop);
+
+  // Zone border lines (dashed)
+  ctx.strokeStyle = 'rgba(100, 255, 100, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(zoneLeft, zoneTop);
+  ctx.lineTo(zoneRight, zoneTop);
+  ctx.moveTo(zoneLeft, zoneBot);
+  ctx.lineTo(zoneRight, zoneBot);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Small label
+  ctx.fillStyle = 'rgba(100, 255, 100, 0.4)';
+  ctx.font = '10px Nunito, sans-serif';
+  ctx.fillText('PERFECT', zoneRight + 5, (zoneTop + zoneBot) / 2 + 3);
+}
+
+function drawHUD() {
+  // Status text updates
+  const hudStatus = document.getElementById('hudStatus');
+  let statusText = 'Raw';
+  let statusClass = '';
+
+  if (game.mallowOnFire) {
+    statusText = 'ON FIRE!';
+    statusClass = 'burning';
+  } else if (game.roastLevel >= 130) {
+    statusText = 'Burnt';
+    statusClass = 'burning';
+  } else if (game.roastLevel >= 100) {
+    statusText = 'Overdone';
+    statusClass = 'burning';
+  } else if (game.roastLevel >= 80) {
+    statusText = 'Perfect!';
+    statusClass = 'golden';
+  } else if (game.roastLevel >= 50) {
+    statusText = 'Golden';
+    statusClass = 'golden';
+  } else if (game.roastLevel >= 20) {
+    statusText = 'Toasting';
+    statusClass = '';
+  }
+
+  hudStatus.textContent = statusText;
+  hudStatus.className = 'hud-value ' + statusClass;
+
+  document.getElementById('hudScore').textContent = Math.floor(game.score);
+}
+
+// Color lerp helper
+function lerpColor(c1, c2, t) {
+  const hex = (c) => parseInt(c.slice(1), 16);
+  const r1 = (hex(c1) >> 16) & 255;
+  const g1 = (hex(c1) >> 8) & 255;
+  const b1 = hex(c1) & 255;
+  const r2 = (hex(c2) >> 16) & 255;
+  const g2 = (hex(c2) >> 8) & 255;
+  const b2 = hex(c2) & 255;
+
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+
+  return `rgb(${r},${g},${b})`;
+}
+
+// ==================== GAME LOOP ====================
+
+function update() {
+  if (game.gameOver) {
+    game.gameOverTimer++;
+    if (game.gameOverTimer > 60) {
+      showResult();
+    }
+    return;
+  }
+
+  game.frameCount++;
+
+  // Input - rotate stick up/down (changes angle)
+  if (keys.up) {
+    game.stickAngle = Math.max(game.stickMinAngle, game.stickAngle - game.stickAngleSpeed);
+  }
+  if (keys.down) {
+    game.stickAngle = Math.min(game.stickMaxAngle, game.stickAngle + game.stickAngleSpeed);
+  }
+
+  // Calculate marshmallow position from stick angle
+  // (This is also done in drawStick, but we need it here for collision)
+  const endX = game.stickPivotX + Math.cos(game.stickAngle) * game.stickLength;
+  const endY = game.stickPivotY + Math.sin(game.stickAngle) * game.stickLength;
+  game.mallowX = endX;
+  game.mallowY = endY;
+
+  // Rotate marshmallow on stick
+  game.mallowRotation += game.mallowRotationSpeed;
+
+  // Fire oscillation
+  game.firePhase += game.fireSpeed;
+  game.fireOffset = Math.sin(game.firePhase) * game.fireAmplitude;
+
+  // Update zones based on fire position
+  updateZones();
+
+  // Determine roasting state based on marshmallow Y position
+  const mallowY = game.mallowY;
+
+  // Check if in burn zone (in flames)
+  if (mallowY > game.burnZoneTop) {
+    // In the fire! Catch fire!
+    if (!game.mallowOnFire) {
+      game.mallowOnFire = true;
+      game.fireTimer = 0;
+    }
+    game.fireTimer++;
+    game.roastLevel += 2; // Burns fast
+    game.mallowState = MALLOW_BURNING;
+  }
+  // Perfect zone
+  else if (mallowY >= game.perfectZoneTop && mallowY <= game.perfectZoneBottom) {
+    game.mallowState = MALLOW_TOASTING;
+    game.roastLevel += 0.15; // Slow, controlled roasting
+    game.perfectTime++;
+
+    // Bonus points for staying in perfect zone
+    if (game.roastLevel >= 50 && game.roastLevel < 100) {
+      game.score += 2 * game.scoreMultiplier;
+      game.scoreMultiplier = Math.min(game.scoreMultiplier + 0.001, 3);
+    } else {
+      game.score += 0.5;
+    }
+  }
+  // Above perfect zone (raw/cooling)
+  else if (mallowY < game.perfectZoneTop) {
+    game.mallowState = MALLOW_RAW;
+    // Very slow roasting from ambient heat if somewhat close to fire
+    const distFromZone = game.perfectZoneTop - mallowY;
+    if (distFromZone < 80) {
+      game.roastLevel += 0.02;
+    }
+    game.scoreMultiplier = Math.max(1, game.scoreMultiplier - 0.01);
+    game.score += 0.1;
+  }
+  // Below perfect but above burn
+  else {
+    game.mallowState = MALLOW_TOASTING;
+    game.roastLevel += 0.5; // Faster roasting, risky
+    game.score += 1;
+  }
+
+  // If on fire, keep burning until too burnt
+  if (game.mallowOnFire) {
+    game.roastLevel += 0.8;
+
+    // Can put out fire by moving up quickly
+    if (mallowY < game.perfectZoneTop - 30) {
+      game.mallowOnFire = false;
+    }
+  }
+
+  // Check for burnt (game over)
+  if (game.roastLevel >= 150) {
+    game.mallowState = MALLOW_BURNT;
+    game.gameOver = true;
+    game.gameOverTimer = 0;
+  }
+
+  // Difficulty progression
+  game.levelTimer++;
+  if (game.levelTimer > 600) { // Every ~10 seconds
+    game.levelTimer = 0;
+    game.level++;
+    game.fireSpeed = Math.min(0.025, game.fireSpeed + 0.002);
+    game.fireAmplitude = Math.min(H * 0.12, game.fireAmplitude + H * 0.005);
+  }
+
+  drawHUD();
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  drawBackground();
+  drawStump();
+  drawFirePit();
+  drawSmoke();
+  drawPerfectZone();
+  drawFire();
+  drawStick();
+  drawMarshmallow();
+  drawSparks();
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+  update();
+  render();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ==================== GAME FLOW ====================
+
+function startGame() {
+  initAudio();
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  if (isMobile) document.getElementById('mobileControls').classList.add('visible');
+
+  initGame();
+
+  if (!shownControls) {
+    shownControls = true;
+    document.getElementById('controlsOverlay').classList.add('visible');
+  } else {
+    gameRunning = true;
+    gameLoop();
+  }
+}
+
+function dismissControls() {
+  document.getElementById('controlsOverlay').classList.remove('visible');
+  gameRunning = true;
+  gameLoop();
+}
+
+function showResult() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+
+  const score = Math.floor(game.score);
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('marshmallowBest', bestScore.toString());
+  }
+
+  let emoji, title;
+  if (game.roastLevel < 130) {
+    emoji = '🍡';
+    title = 'Tasty S\'more!';
+  } else {
+    emoji = '💨';
+    title = 'Oops, Burnt!';
+  }
+
+  // More specific feedback
+  if (game.perfectTime > 200) {
+    emoji = '🏆';
+    title = 'Master Roaster!';
+  } else if (score > 500) {
+    emoji = '⭐';
+    title = 'Golden Perfection!';
+  } else if (game.roastLevel >= 80 && game.roastLevel < 110) {
+    emoji = '😋';
+    title = 'Delicious!';
+  }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultScore').textContent = `Score: ${score}`;
+  document.getElementById('resultBest').textContent = `Best: ${bestScore}`;
+  document.getElementById('resultOverlay').classList.add('visible');
+}
+
+function restartGame() {
+  document.getElementById('resultOverlay').classList.remove('visible');
+  initGame();
+  gameRunning = true;
+  gameLoop();
+}
+
+function backToMenu() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mobileControls').classList.remove('visible');
+  document.getElementById('resultOverlay').classList.remove('visible');
+  document.getElementById('startScreen').classList.remove('hidden');
+  ctx.clearRect(0, 0, W, H);
+}
+
+// ==================== INPUT ====================
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+    keys.up = true;
+    e.preventDefault();
+  }
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+    keys.down = true;
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+});
+
+// Mobile touch buttons
+function setupCtrl(id, dir) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = () => { keys[dir] = true; el.classList.add('pressed'); };
+  const end = () => { keys[dir] = false; el.classList.remove('pressed'); };
+  el.addEventListener('touchstart', e => { e.preventDefault(); start(); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); end(); }, { passive: false });
+  el.addEventListener('touchcancel', end);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+}
+setupCtrl('btnUp', 'up');
+setupCtrl('btnDown', 'down');
+
+// Prevent scroll on touch
+document.addEventListener('touchmove', e => {
+  if (gameRunning) e.preventDefault();
+}, { passive: false });
+
+// ==================== MENU EFFECTS ====================
+
+// Stars
+const starsContainer = document.getElementById('stars');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 60 + '%';
+  s.style.setProperty('--dur', (2 + Math.random() * 4) + 's');
+  s.style.setProperty('--max-o', (0.3 + Math.random() * 0.5).toFixed(2));
+  s.style.animationDelay = (Math.random() * 5) + 's';
+  s.style.width = s.style.height = (1.5 + Math.random() * 2) + 'px';
+  starsContainer.appendChild(s);
+}
+
+// Fireflies
+for (let i = 0; i < 8; i++) {
+  const f = document.createElement('div');
+  f.className = 'firefly';
+  f.style.left = (20 + Math.random() * 60) + '%';
+  f.style.top = (40 + Math.random() * 40) + '%';
+  f.style.setProperty('--dx', (Math.random() - 0.5) * 60 + 'px');
+  f.style.setProperty('--dy', (Math.random() - 0.5) * 40 + 'px');
+  f.style.animationDelay = (Math.random() * 8) + 's';
+  f.style.animationDuration = (6 + Math.random() * 4) + 's';
+  starsContainer.appendChild(f);
+}
+</script>
+</body>
+</html>
