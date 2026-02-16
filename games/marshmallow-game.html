@@ -190,32 +190,44 @@
     left: 0; right: 0;
     z-index: 40;
     display: none;
-    padding: 0.8rem 1rem 1.2rem;
-    justify-content: center;
+    padding: 1.5rem 1.5rem 2rem;
+    justify-content: space-between;
     align-items: flex-end;
     pointer-events: none;
-    gap: 1rem;
   }
   .mobile-controls.visible { display: flex; }
 
   .ctrl-btn {
-    width: 70px; height: 70px;
-    background: rgba(255,159,67,0.15);
-    border: 2.5px solid rgba(255,159,67,0.8);
+    width: 80px; height: 80px;
+    background: rgba(0,0,0,0.6);
+    border: 3px solid rgba(255,159,67,0.9);
     border-radius: 1rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
+    gap: 2px;
     color: rgb(255,200,100);
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
-    transition: background 0.1s;
+    transition: background 0.1s, transform 0.1s;
     pointer-events: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
   }
   .ctrl-btn:active, .ctrl-btn.pressed {
-    background: rgba(255,159,67,0.35);
+    background: rgba(255,159,67,0.4);
+    transform: scale(0.95);
+  }
+  .ctrl-arrow {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .ctrl-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    opacity: 0.8;
   }
 
   /* Result overlay */
@@ -351,8 +363,8 @@
 
 <!-- ===== MOBILE CONTROLS ===== -->
 <div class="mobile-controls" id="mobileControls">
-  <button class="ctrl-btn" id="btnUp">▲</button>
-  <button class="ctrl-btn" id="btnDown">▼</button>
+  <button class="ctrl-btn" id="btnUp"><span class="ctrl-arrow">▲</span><span class="ctrl-label">UP</span></button>
+  <button class="ctrl-btn" id="btnDown"><span class="ctrl-arrow">▼</span><span class="ctrl-label">DOWN</span></button>
 </div>
 
 <!-- ===== CONTROLS MODAL ===== -->
@@ -366,11 +378,15 @@
     </div>
     <div class="controls-row">
       <div class="key-icon" style="width: auto; padding: 0 12px;">🎯</div>
-      <div class="key-desc">Keep it in the golden zone!</div>
+      <div class="key-desc">Roast in the green zone until golden</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon" style="width: auto; padding: 0 12px;">✨</div>
+      <div class="key-desc">When ready, pull UP to make s'more!</div>
     </div>
     <div class="controls-row">
       <div class="key-icon" style="width: auto; padding: 0 12px;">⚠️</div>
-      <div class="key-desc">Don't let it catch fire!</div>
+      <div class="key-desc">Don't let it burn!</div>
     </div>
     <button class="controls-go-btn" onclick="dismissControls()">Let's Roast!</button>
   </div>
@@ -429,45 +445,163 @@ const MALLOW_BURNT = 3;
 // ==================== AUDIO CONTEXT ====================
 
 let audioCtx = null;
-let fireNoise = null;
+let masterGain = null;
+let crackleInterval = null;
 
 function initAudio() {
   if (audioCtx) return;
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Create crackling fire noise
-    const bufferSize = audioCtx.sampleRate * 2;
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
+    // Master gain for all fire sounds
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.3;
+    masterGain.connect(audioCtx.destination);
 
-    for (let i = 0; i < bufferSize; i++) {
-      // Random crackles
-      if (Math.random() < 0.001) {
-        data[i] = (Math.random() - 0.5) * 0.3;
-      } else {
-        data[i] = (Math.random() - 0.5) * 0.02;
-      }
-    }
+    // Create base fire rumble (low frequency noise)
+    createFireBase();
 
-    fireNoise = audioCtx.createBufferSource();
-    fireNoise.buffer = buffer;
-    fireNoise.loop = true;
+    // Start crackling sounds at random intervals
+    scheduleCrackle();
 
-    const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.15;
-
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 800;
-
-    fireNoise.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    fireNoise.start();
   } catch (e) {
     // Audio not supported
   }
+}
+
+function createFireBase() {
+  // Low rumbling base of the fire - brown noise (filtered)
+  const bufferSize = audioCtx.sampleRate * 3;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  // Generate brown noise (integrated white noise)
+  let lastOut = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    data[i] = (lastOut + (0.02 * white)) / 1.02;
+    lastOut = data[i];
+    data[i] *= 3.5; // Amplify
+  }
+
+  const baseNoise = audioCtx.createBufferSource();
+  baseNoise.buffer = buffer;
+  baseNoise.loop = true;
+
+  // Low pass filter for deep rumble
+  const lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = 'lowpass';
+  lowPass.frequency.value = 150;
+  lowPass.Q.value = 1;
+
+  // Gentle modulation for wavering effect
+  const baseGain = audioCtx.createGain();
+  baseGain.gain.value = 0.4;
+
+  baseNoise.connect(lowPass);
+  lowPass.connect(baseGain);
+  baseGain.connect(masterGain);
+  baseNoise.start();
+}
+
+function createCrackle() {
+  // Individual crackle/pop sound
+  const duration = 0.03 + Math.random() * 0.08;
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  // Sharp attack, quick decay - like wood popping
+  for (let i = 0; i < buffer.length; i++) {
+    const t = i / buffer.length;
+    // Envelope: sharp attack, exponential decay
+    const envelope = Math.exp(-t * 15) * (1 - Math.exp(-t * 500));
+    // Mix of noise frequencies for realistic crackle
+    const noise = (Math.random() * 2 - 1);
+    data[i] = noise * envelope;
+  }
+
+  const crackle = audioCtx.createBufferSource();
+  crackle.buffer = buffer;
+
+  // Bandpass filter for woody crackle sound
+  const bandpass = audioCtx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 800 + Math.random() * 2000;
+  bandpass.Q.value = 1 + Math.random() * 2;
+
+  // Random volume for variety
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.3 + Math.random() * 0.7;
+
+  // Slight pan for spatial effect
+  const panner = audioCtx.createStereoPanner();
+  panner.pan.value = (Math.random() - 0.5) * 0.6;
+
+  crackle.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(panner);
+  panner.connect(masterGain);
+  crackle.start();
+}
+
+function createPop() {
+  // Louder pop sound (like sap popping)
+  const duration = 0.05 + Math.random() * 0.05;
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < buffer.length; i++) {
+    const t = i / buffer.length;
+    // Very sharp attack
+    const envelope = Math.exp(-t * 25) * (1 - Math.exp(-t * 1000));
+    data[i] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const pop = audioCtx.createBufferSource();
+  pop.buffer = buffer;
+
+  // Higher frequency for pop
+  const highpass = audioCtx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 500;
+
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.5 + Math.random() * 0.5;
+
+  const panner = audioCtx.createStereoPanner();
+  panner.pan.value = (Math.random() - 0.5) * 0.8;
+
+  pop.connect(highpass);
+  highpass.connect(gain);
+  gain.connect(panner);
+  panner.connect(masterGain);
+  pop.start();
+}
+
+function scheduleCrackle() {
+  if (!audioCtx) return;
+
+  // Random crackles
+  const crackleDelay = 50 + Math.random() * 200;
+  setTimeout(() => {
+    if (audioCtx && audioCtx.state === 'running') {
+      createCrackle();
+
+      // Occasionally do multiple quick crackles (like a burst)
+      if (Math.random() < 0.3) {
+        setTimeout(() => createCrackle(), 20 + Math.random() * 40);
+      }
+      if (Math.random() < 0.15) {
+        setTimeout(() => createCrackle(), 50 + Math.random() * 50);
+      }
+
+      // Occasional louder pop
+      if (Math.random() < 0.1) {
+        setTimeout(() => createPop(), Math.random() * 100);
+      }
+    }
+    scheduleCrackle();
+  }, crackleDelay);
 }
 
 // ==================== GAME INIT ====================
@@ -479,8 +613,8 @@ function initGame() {
 
   // Hand position (left end of stick) - moves vertically
   const handX = W * 0.12;
-  const handMinY = H * 0.15;
-  const handMaxY = H * 0.55;
+  const handMinY = H * 0.05;  // Can raise high above fire
+  const handMaxY = H * 0.72;  // Can lower into the fire
   const handStartY = H * 0.35;
 
   // Calculate initial marshmallow position
@@ -517,10 +651,12 @@ function initGame() {
     burnZoneTop: 0,
 
     // Roasting state
-    roastLevel: 0, // 0 = raw, 100 = perfect, 150+ = burnt
+    roastLevel: 0, // 0-40 raw, 40-65 toasting, 65-85 golden, 85-105 perfect, 105+ overdone
     mallowState: MALLOW_RAW,
     mallowOnFire: false,
     fireTimer: 0, // How long on fire
+    canFinish: false, // True when roast level is in "done" range (65+)
+    finishZoneTimer: 0, // Time spent in finish zone while canFinish is true
 
     // Score
     score: 0,
@@ -1016,42 +1152,55 @@ function drawMarshmallow() {
   const size = baseSize + (game.roastLevel > 100 ? (game.roastLevel - 100) * 0.05 : 0);
 
   // Determine color based on roast level
+  // Perfect zone is 80-100, should be beautiful golden brown
   let baseColor, shadowColor, highlightColor;
 
-  if (game.roastLevel < 20) {
-    // Raw - white
-    baseColor = '#f5f5f5';
-    shadowColor = '#e0e0e0';
+  if (game.roastLevel < 15) {
+    // Raw - pure white marshmallow
+    baseColor = '#f8f8f8';
+    shadowColor = '#e8e8e8';
     highlightColor = '#ffffff';
-  } else if (game.roastLevel < 50) {
-    // Warming - slight cream
-    const t = (game.roastLevel - 20) / 30;
-    baseColor = lerpColor('#f5f5f5', '#f5e6d3', t);
-    shadowColor = lerpColor('#e0e0e0', '#e0d0b8', t);
+  } else if (game.roastLevel < 40) {
+    // Warming - white to light cream
+    const t = (game.roastLevel - 15) / 25;
+    baseColor = lerpColor('#f8f8f8', '#fff5e6', t);
+    shadowColor = lerpColor('#e8e8e8', '#f0e0c8', t);
     highlightColor = '#ffffff';
-  } else if (game.roastLevel < 80) {
-    // Light golden
-    const t = (game.roastLevel - 50) / 30;
-    baseColor = lerpColor('#f5e6d3', '#daa520', t);
-    shadowColor = lerpColor('#e0d0b8', '#b8860b', t);
-    highlightColor = lerpColor('#ffffff', '#ffd700', t);
-  } else if (game.roastLevel < 100) {
-    // Perfect golden brown
-    const t = (game.roastLevel - 80) / 20;
-    baseColor = lerpColor('#daa520', '#cd853f', t);
-    shadowColor = lerpColor('#b8860b', '#8b4513', t);
-    highlightColor = lerpColor('#ffd700', '#daa520', t);
-  } else if (game.roastLevel < 130) {
-    // Getting dark
-    const t = (game.roastLevel - 100) / 30;
-    baseColor = lerpColor('#cd853f', '#4a3728', t);
-    shadowColor = lerpColor('#8b4513', '#2d1810', t);
-    highlightColor = lerpColor('#daa520', '#8b4513', t);
+  } else if (game.roastLevel < 65) {
+    // Toasting - cream to light golden
+    const t = (game.roastLevel - 40) / 25;
+    baseColor = lerpColor('#fff5e6', '#f4d03f', t);
+    shadowColor = lerpColor('#f0e0c8', '#d4ac0d', t);
+    highlightColor = lerpColor('#ffffff', '#fff9e6', t);
+  } else if (game.roastLevel < 85) {
+    // Golden - beautiful caramelized look
+    const t = (game.roastLevel - 65) / 20;
+    baseColor = lerpColor('#f4d03f', '#e6a117', t);
+    shadowColor = lerpColor('#d4ac0d', '#c9920a', t);
+    highlightColor = lerpColor('#fff9e6', '#ffe066', t);
+  } else if (game.roastLevel < 105) {
+    // Perfect golden brown - ideal s'more marshmallow
+    const t = (game.roastLevel - 85) / 20;
+    baseColor = lerpColor('#e6a117', '#d4841a', t);
+    shadowColor = lerpColor('#c9920a', '#b87315', t);
+    highlightColor = lerpColor('#ffe066', '#f5c842', t);
+  } else if (game.roastLevel < 125) {
+    // Overdone - getting darker but still edible
+    const t = (game.roastLevel - 105) / 20;
+    baseColor = lerpColor('#d4841a', '#8b5a2b', t);
+    shadowColor = lerpColor('#b87315', '#6b4423', t);
+    highlightColor = lerpColor('#f5c842', '#c9923a', t);
+  } else if (game.roastLevel < 145) {
+    // Burnt - dark brown to charred
+    const t = (game.roastLevel - 125) / 20;
+    baseColor = lerpColor('#8b5a2b', '#3d2817', t);
+    shadowColor = lerpColor('#6b4423', '#2a1a0f', t);
+    highlightColor = lerpColor('#c9923a', '#5c4030', t);
   } else {
-    // Burnt black
-    baseColor = '#1a1a1a';
-    shadowColor = '#0a0a0a';
-    highlightColor = '#3a3a3a';
+    // Charcoal - completely burnt
+    baseColor = '#1f1410';
+    shadowColor = '#0f0a08';
+    highlightColor = '#3a2a20';
   }
 
   // Fire glow when marshmallow is on fire
@@ -1094,16 +1243,22 @@ function drawMarshmallow() {
   ctx.globalAlpha = 1;
 
   // Roast spots (gradual browning pattern)
-  if (game.roastLevel > 30) {
-    const spotIntensity = Math.min((game.roastLevel - 30) / 70, 1);
-    ctx.fillStyle = `rgba(139, 69, 19, ${spotIntensity * 0.5})`;
+  // Caramelization spots appear as marshmallow toasts
+  if (game.roastLevel > 50) {
+    const spotIntensity = Math.min((game.roastLevel - 50) / 80, 1);
+    // Golden-brown spots that darken as roast progresses
+    const spotDarkness = Math.min(game.roastLevel / 150, 1);
+    const r = Math.round(180 - spotDarkness * 80);
+    const g = Math.round(120 - spotDarkness * 70);
+    const b = Math.round(60 - spotDarkness * 40);
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${spotIntensity * 0.6})`;
 
     // Random-looking but consistent spots
     for (let i = 0; i < 5; i++) {
       const angle = i * 1.2 + rotation * 2;
       const spotX = Math.cos(angle) * size * 0.5;
       const spotY = Math.sin(angle) * size * 0.7;
-      const spotSize = 4 + (i % 3) * 2;
+      const spotSize = 3 + (i % 3) * 2;
       ctx.beginPath();
       ctx.arc(spotX, spotY, spotSize * spotIntensity, 0, Math.PI * 2);
       ctx.fill();
@@ -1131,8 +1286,8 @@ function drawMarshmallow() {
       ctx.fill();
     }
 
-    // Spawn sparks
-    if (game.frameCount % 5 === 0) {
+    // Spawn sparks (limit total to prevent memory issues)
+    if (game.frameCount % 5 === 0 && game.sparkParticles.length < 50) {
       game.sparkParticles.push(createSparkParticle(x, y - size));
     }
   }
@@ -1147,19 +1302,22 @@ function drawMarshmallow() {
 }
 
 function drawSparks() {
-  game.sparkParticles.forEach((p, i) => {
+  // Filter first, then update and draw
+  game.sparkParticles = game.sparkParticles.filter(p => p.life > 0);
+
+  game.sparkParticles.forEach((p) => {
     p.x += p.vx;
     p.y += p.vy;
     p.vy += 0.15; // gravity
     p.life--;
 
-    const alpha = p.life / p.maxLife;
+    const alpha = Math.max(0, p.life / p.maxLife);
+    const radius = Math.max(0.1, p.size * alpha);
     ctx.fillStyle = `rgba(255, 200, 50, ${alpha})`;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
     ctx.fill();
   });
-  game.sparkParticles = game.sparkParticles.filter(p => p.life > 0);
 }
 
 function drawPerfectZone() {
@@ -1199,7 +1357,7 @@ function drawPerfectZone() {
 }
 
 function drawHUD() {
-  // Status text updates
+  // Status text updates - matches new color ranges
   const hudStatus = document.getElementById('hudStatus');
   let statusText = 'Raw';
   let statusClass = '';
@@ -1207,21 +1365,37 @@ function drawHUD() {
   if (game.mallowOnFire) {
     statusText = 'ON FIRE!';
     statusClass = 'burning';
-  } else if (game.roastLevel >= 130) {
+  } else if (game.roastLevel >= 145) {
+    statusText = 'Charred';
+    statusClass = 'burning';
+  } else if (game.roastLevel >= 125) {
     statusText = 'Burnt';
     statusClass = 'burning';
-  } else if (game.roastLevel >= 100) {
+  } else if (game.roastLevel >= 105) {
     statusText = 'Overdone';
     statusClass = 'burning';
-  } else if (game.roastLevel >= 80) {
+  } else if (game.roastLevel >= 85) {
     statusText = 'Perfect!';
     statusClass = 'golden';
-  } else if (game.roastLevel >= 50) {
+  } else if (game.roastLevel >= 65) {
     statusText = 'Golden';
     statusClass = 'golden';
-  } else if (game.roastLevel >= 20) {
+  } else if (game.roastLevel >= 40) {
     statusText = 'Toasting';
     statusClass = '';
+  } else if (game.roastLevel >= 15) {
+    statusText = 'Warming';
+    statusClass = '';
+  }
+
+  // Show "Pull up to finish!" hint when marshmallow is ready
+  if (game.roastLevel >= 65 && game.roastLevel < 125 && !game.mallowOnFire) {
+    if (game.finishZoneTimer > 0) {
+      statusText = 'Making S\'more!';
+      statusClass = 'golden';
+    } else if (game.canFinish || game.roastLevel >= 65) {
+      statusText += ' ↑';
+    }
   }
 
   hudStatus.textContent = statusText;
@@ -1250,15 +1424,16 @@ function lerpColor(c1, c2, t) {
 // ==================== GAME LOOP ====================
 
 function update() {
+  // Always increment frame count for animations
+  game.frameCount++;
+
   if (game.gameOver) {
     game.gameOverTimer++;
-    if (game.gameOverTimer > 60) {
+    if (game.gameOverTimer > 45 && gameRunning) {
       showResult();
     }
     return;
   }
-
-  game.frameCount++;
 
   // Input - move hand up/down (raises/lowers the stick)
   if (keys.up) {
@@ -1296,13 +1471,16 @@ function update() {
       game.fireTimer = 0;
     }
     game.fireTimer++;
-    game.roastLevel += 2; // Burns fast
     game.mallowState = MALLOW_BURNING;
+    // Burn faster when actually in the flames
+    game.roastLevel += 0.8;
   }
   // Perfect zone
   else if (mallowY >= game.perfectZoneTop && mallowY <= game.perfectZoneBottom) {
     game.mallowState = MALLOW_TOASTING;
-    game.roastLevel += 0.15; // Slow, controlled roasting
+    if (!game.mallowOnFire) {
+      game.roastLevel += 0.05; // Slow, controlled roasting
+    }
     game.perfectTime++;
 
     // Bonus points for staying in perfect zone
@@ -1313,36 +1491,54 @@ function update() {
       game.score += 0.5;
     }
   }
-  // Above perfect zone (raw/cooling)
+  // Above perfect zone (cooling/safe zone)
   else if (mallowY < game.perfectZoneTop) {
     game.mallowState = MALLOW_RAW;
     // Very slow roasting from ambient heat if somewhat close to fire
-    const distFromZone = game.perfectZoneTop - mallowY;
-    if (distFromZone < 80) {
-      game.roastLevel += 0.02;
+    if (!game.mallowOnFire) {
+      const distFromZone = game.perfectZoneTop - mallowY;
+      if (distFromZone < 80) {
+        game.roastLevel += 0.008;
+      }
     }
     game.scoreMultiplier = Math.max(1, game.scoreMultiplier - 0.01);
     game.score += 0.1;
+
+    // Can put out fire by moving up high enough
+    if (game.mallowOnFire && mallowY < game.perfectZoneTop - 40) {
+      game.mallowOnFire = false;
+    }
+
+    // WIN CONDITION: Pull roasted marshmallow up high to finish!
+    // Must be roasted to at least "Golden" (65+) and pulled up high
+    if (game.roastLevel >= 65 && !game.mallowOnFire && mallowY < game.perfectZoneTop - 60) {
+      game.canFinish = true;
+      game.finishZoneTimer++;
+      // Hold for ~1 second to finish
+      if (game.finishZoneTimer > 60) {
+        game.gameOver = true;
+        game.gameOverTimer = 0;
+      }
+    } else {
+      game.finishZoneTimer = Math.max(0, game.finishZoneTimer - 2); // Decay if not in finish zone
+    }
   }
   // Below perfect but above burn
   else {
     game.mallowState = MALLOW_TOASTING;
-    game.roastLevel += 0.5; // Faster roasting, risky
+    if (!game.mallowOnFire) {
+      game.roastLevel += 0.15; // Faster roasting, risky
+    }
     game.score += 1;
   }
 
-  // If on fire, keep burning until too burnt
-  if (game.mallowOnFire) {
-    game.roastLevel += 0.8;
-
-    // Can put out fire by moving up quickly
-    if (mallowY < game.perfectZoneTop - 30) {
-      game.mallowOnFire = false;
-    }
+  // If on fire but pulled out of flames, still burns but slower
+  if (game.mallowOnFire && mallowY <= game.burnZoneTop) {
+    game.roastLevel += 0.2;
   }
 
-  // Check for burnt (game over)
-  if (game.roastLevel >= 150) {
+  // Check for burnt (game over) - either roast level too high OR on fire too long
+  if (game.roastLevel >= 150 || game.fireTimer > 180) {
     game.mallowState = MALLOW_BURNT;
     game.gameOver = true;
     game.gameOverTimer = 0;
@@ -1361,6 +1557,8 @@ function update() {
 }
 
 function render() {
+  if (!game) return;
+
   ctx.clearRect(0, 0, W, H);
 
   drawBackground();
@@ -1407,6 +1605,9 @@ function dismissControls() {
 }
 
 function showResult() {
+  // Prevent multiple calls
+  if (!gameRunning) return;
+
   gameRunning = false;
   cancelAnimationFrame(animId);
 
@@ -1417,24 +1618,34 @@ function showResult() {
   }
 
   let emoji, title;
-  if (game.roastLevel < 130) {
-    emoji = '🍡';
-    title = 'Tasty S\'more!';
-  } else {
+  // Feedback based on final roast level (using new ranges)
+  if (game.roastLevel >= 145) {
+    emoji = '⬛';
+    title = 'Charcoal Briquette!';
+  } else if (game.roastLevel >= 125) {
     emoji = '💨';
     title = 'Oops, Burnt!';
+  } else if (game.roastLevel >= 105) {
+    emoji = '😅';
+    title = 'A Bit Overdone';
+  } else if (game.roastLevel >= 85) {
+    emoji = '😋';
+    title = 'Perfect S\'more!';
+  } else if (game.roastLevel >= 65) {
+    emoji = '🍡';
+    title = 'Golden & Tasty!';
+  } else {
+    emoji = '🤔';
+    title = 'Needs More Time';
   }
 
-  // More specific feedback
-  if (game.perfectTime > 200) {
+  // Override with special achievements
+  if (game.perfectTime > 300 && game.roastLevel >= 85 && game.roastLevel < 105) {
     emoji = '🏆';
     title = 'Master Roaster!';
-  } else if (score > 500) {
+  } else if (score > 500 && game.roastLevel < 125) {
     emoji = '⭐';
-    title = 'Golden Perfection!';
-  } else if (game.roastLevel >= 80 && game.roastLevel < 110) {
-    emoji = '😋';
-    title = 'Delicious!';
+    title = 'S\'more Expert!';
   }
 
   document.getElementById('resultEmoji').textContent = emoji;
