@@ -843,7 +843,7 @@ function drawPlayer() {
   ctx.globalAlpha = 0.15;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(2, PLAYER_H / 2 + 4, 14, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(2, PLAYER_H / 2 + 4, isBoard ? 22 : 14, 5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
 
@@ -853,22 +853,62 @@ function drawPlayer() {
   const outfitColor2 = isGirl ? '#fd79a8' : '#74b9ff';
   const hairColor = isGirl ? '#b8860b' : '#5a3825';
 
-  // Legs
-  ctx.fillStyle = '#2d3436';
-  ctx.fillRect(-8, 6, 6, 16);
-  ctx.fillRect(2, 6, 6, 16);
-
-  // Ski/board
   if (isBoard) {
+    // === SNOWBOARDER (sideways stance) ===
+
+    // Snowboard - elongated, perpendicular to slope
     ctx.fillStyle = '#2d3436';
     ctx.beginPath();
-    ctx.roundRect(-14, 20, 28, 6, 3);
+    ctx.ellipse(0, 23, 24, 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Board top color
     ctx.fillStyle = outfitColor;
     ctx.beginPath();
-    ctx.roundRect(-12, 21, 24, 4, 2);
+    ctx.ellipse(0, 23, 22, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Center stripe
+    ctx.fillStyle = outfitColor2;
+    ctx.fillRect(-14, 22, 28, 2);
+
+    // Bindings on board
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(-10, 21, 6, 4);
+    ctx.fillRect(4, 21, 6, 4);
+
+    // Boots (rotated sideways on bindings)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.save();
+    ctx.translate(-7, 18);
+    ctx.rotate(0.4);
+    ctx.fillRect(-3, -2, 7, 5);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(7, 18);
+    ctx.rotate(-0.4);
+    ctx.fillRect(-4, -2, 7, 5);
+    ctx.restore();
+
+    // Legs (sideways stance, slightly angled outward)
+    ctx.fillStyle = '#2d3436';
+    ctx.save();
+    ctx.translate(-5, 6);
+    ctx.rotate(0.15);
+    ctx.fillRect(-3, 0, 6, 13);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(5, 6);
+    ctx.rotate(-0.15);
+    ctx.fillRect(-3, 0, 6, 13);
+    ctx.restore();
+
   } else {
+    // === SKIER ===
+    // Legs
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(-8, 6, 6, 16);
+    ctx.fillRect(2, 6, 6, 16);
+
+    // Skis
     ctx.fillStyle = '#636e72';
     ctx.fillRect(-12, 22, 4, 2);
     ctx.fillRect(8, 22, 4, 2);
@@ -886,14 +926,16 @@ function drawPlayer() {
     ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(18, 22); ctx.stroke();
   }
 
-  // Torso
+  // Torso (narrower for snowboarder's sideways stance)
+  const torsoW = isBoard ? 16 : 20;
   ctx.fillStyle = outfitColor;
   ctx.beginPath();
-  ctx.roundRect(-10, -8, 20, 18, 4);
+  ctx.roundRect(-torsoW / 2, -8, torsoW, 18, 4);
   ctx.fill();
   // Jacket detail
+  const detailW = isBoard ? 4 : 6;
   ctx.fillStyle = outfitColor2;
-  ctx.fillRect(-3, -6, 6, 14);
+  ctx.fillRect(-detailW / 2, -6, detailW, 14);
 
   // Head
   ctx.fillStyle = skinColor;
