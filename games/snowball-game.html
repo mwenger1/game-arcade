@@ -6,6 +6,7 @@
 <title>Snowball Fight!</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -271,6 +272,26 @@ body {
   <div class="mbtn mthrow" id="bThrow"><span class="mi">🎯</span><span class="ml">Throw</span></div>
 </div>
 
+<!-- ===== CONTROLS MODAL ===== -->
+<div class="controls-overlay" id="controlsOverlay">
+  <div class="controls-card">
+    <h2>How to Play</h2>
+    <div class="controls-row">
+      <div class="key-icon">⬇</div>
+      <div class="key-desc">Duck behind the snow wall</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">⬆</div>
+      <div class="key-desc">Throw a snowball</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">1 2 3</div>
+      <div class="key-desc">Change snowball size</div>
+    </div>
+    <button class="controls-go-btn" onclick="dismissControls()">Let's Go!</button>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -322,6 +343,7 @@ const SZ = {
 let gender = null;
 let running = false;
 let loopId = null;
+let shownControls = false;
 
 // ==================== MENU ====================
 function pickG(g, btn) {
@@ -410,21 +432,13 @@ function initGame() {
   G = {
     pt, et,
     ps: 0, es: 0,
-    balls: [], vehs: [], parts: [], flakes: [],
+    balls: [], vehs: [], parts: [],
     bsz: 'small',
     vTmr: 120 + Math.random() * 180,
     fr: 0,
     pDuck: false,
     won: false
   };
-
-  for (let i = 0; i < 55; i++) {
-    G.flakes.push({
-      x: Math.random() * W, y: Math.random() * H,
-      sz: 1 + Math.random() * 2.5, sp: 0.3 + Math.random() * 0.8,
-      dr: (Math.random() - 0.5) * 0.3, op: 0.2 + Math.random() * 0.35
-    });
-  }
 
   calcZones();
 }
@@ -594,9 +608,6 @@ function drawScene() {
   ey.addColorStop(0, '#d8e8f2'); ey.addColorStop(1, '#cee0ec');
   cx.fillStyle = ey; cx.fillRect(0, Z.eYardTop, W, Z.eYardH);
 
-  // Top snowbank (enemy wall)
-  drawBank(Z.tBankY, Z.bankH, '#e2edf6', '#d6e4f0', false);
-
   // Road
   cx.fillStyle = '#505358';
   cx.fillRect(0, Z.roadY, W, Z.roadH);
@@ -612,9 +623,6 @@ function drawScene() {
   cx.fillStyle = '#7a7a7a';
   cx.fillRect(0, Z.roadY, W, 3);
   cx.fillRect(0, Z.roadY + Z.roadH - 3, W, 3);
-
-  // Bottom snowbank (player wall)
-  drawBank(Z.bBankY, Z.bankH, '#dee9f3', '#d0e0ee', true);
 
   // Player yard
   const py = cx.createLinearGradient(0, Z.pYardTop, 0, Z.groundY);
@@ -803,17 +811,6 @@ function drawPile() {
   cx.fillText('∞', px, py + 14);
 }
 
-function drawFlakes() {
-  G.flakes.forEach(f => {
-    f.y += f.sp; f.x += f.dr;
-    if (f.y > H + 5) { f.y = -5; f.x = Math.random() * W; }
-    if (f.x < 0) f.x = W; if (f.x > W) f.x = 0;
-    cx.globalAlpha = f.op; cx.fillStyle = '#fff';
-    cx.beginPath(); cx.arc(f.x, f.y, f.sz, 0, Math.PI * 2); cx.fill();
-  });
-  cx.globalAlpha = 1;
-}
-
 function drawParts() {
   G.parts = G.parts.filter(p => {
     p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.l--;
@@ -934,7 +931,7 @@ function update() {
     if (k.throwA > 0) k.throwA--;
     if (k.hitT > 0) k.hitT--;
     if (k.hitT === 0) k.hit = false;
-    if (k.duckT > 0) { k.duckT--; if (k.duckT === 0 && !k.isMe) k.duck = false; }
+    if (k.duckT > 0) { k.duckT--; if (k.duckT <= 0 && !k.isMe) k.duck = false; }
   });
 
   // Enemy AI - one at a time, relaxed pace, cap total balls in air
@@ -1060,19 +1057,18 @@ function render() {
   // Vehicles on road
   G.vehs.forEach(v => drawVeh(v));
 
-  // Player team (drawn first, then wall covers their lower body)
-  G.pt.forEach(k => drawKid(k, true));
+  // Bottom snowbank drawn first, then player team on top (players are in front of wall from viewer's perspective)
   drawBank(Z.bBankY, Z.bankH, '#dee9f3', '#d0e0ee', true);
+  G.pt.forEach(k => drawKid(k, true));
 
   // Player indicator ON TOP of the wall so it's always visible
   const me = G.pt.find(k => k.isMe);
   if (me) drawPlayerIndicator(me);
 
-  // Pile, balls, particles, snow
+  // Pile, balls, particles
   drawPile();
   G.balls.forEach(b => drawBall(b));
   drawParts();
-  drawFlakes();
 }
 
 function loop() {
@@ -1095,6 +1091,17 @@ function startGame() {
   sp.style.left = '50%'; sp.style.transform = 'translateX(-50%)';
 
   initGame(); updHUD();
+
+  if (!shownControls) {
+    shownControls = true;
+    document.getElementById('controlsOverlay').classList.add('visible');
+  } else {
+    running = true; loop();
+  }
+}
+
+function dismissControls() {
+  document.getElementById('controlsOverlay').classList.remove('visible');
   running = true; loop();
 }
 
