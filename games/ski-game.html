@@ -875,30 +875,22 @@ function drawPlayer() {
     ctx.fillRect(-10, 21, 6, 4);
     ctx.fillRect(4, 21, 6, 4);
 
-    // Boots (rotated sideways on bindings)
+    // Boots (wide rectangles across board - sideways orientation)
     ctx.fillStyle = '#1a1a1a';
-    ctx.save();
-    ctx.translate(-7, 18);
-    ctx.rotate(0.4);
-    ctx.fillRect(-3, -2, 7, 5);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(7, 18);
-    ctx.rotate(-0.4);
-    ctx.fillRect(-4, -2, 7, 5);
-    ctx.restore();
+    ctx.fillRect(-12, 16, 9, 6);
+    ctx.fillRect(3, 16, 9, 6);
 
-    // Legs (sideways stance, slightly angled outward)
+    // Legs (angled outward from narrow torso to spread bindings)
     ctx.fillStyle = '#2d3436';
     ctx.save();
-    ctx.translate(-5, 6);
-    ctx.rotate(0.15);
-    ctx.fillRect(-3, 0, 6, 13);
+    ctx.translate(-1, 8);
+    ctx.rotate(0.35);
+    ctx.fillRect(-2, 0, 5, 11);
     ctx.restore();
     ctx.save();
-    ctx.translate(5, 6);
-    ctx.rotate(-0.15);
-    ctx.fillRect(-3, 0, 6, 13);
+    ctx.translate(1, 8);
+    ctx.rotate(-0.35);
+    ctx.fillRect(-3, 0, 5, 11);
     ctx.restore();
 
   } else {
@@ -926,16 +918,41 @@ function drawPlayer() {
     ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(18, 22); ctx.stroke();
   }
 
-  // Torso (narrower for snowboarder's sideways stance)
-  const torsoW = isBoard ? 16 : 20;
+  // Torso (narrow side-profile for snowboarder)
+  const torsoW = isBoard ? 8 : 20;
   ctx.fillStyle = outfitColor;
   ctx.beginPath();
   ctx.roundRect(-torsoW / 2, -8, torsoW, 18, 4);
   ctx.fill();
   // Jacket detail
-  const detailW = isBoard ? 4 : 6;
+  const detailW = isBoard ? 2 : 6;
   ctx.fillStyle = outfitColor2;
   ctx.fillRect(-detailW / 2, -6, detailW, 14);
+
+  // Arms (extended for snowboarder balance)
+  if (isBoard) {
+    ctx.strokeStyle = outfitColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    // Trailing arm
+    ctx.beginPath();
+    ctx.moveTo(-4, -2);
+    ctx.lineTo(-18, 6);
+    ctx.stroke();
+    // Leading arm
+    ctx.beginPath();
+    ctx.moveTo(4, -2);
+    ctx.lineTo(20, 4);
+    ctx.stroke();
+    // Gloves
+    ctx.fillStyle = outfitColor2;
+    ctx.beginPath();
+    ctx.arc(-18, 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(20, 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Head
   ctx.fillStyle = skinColor;
