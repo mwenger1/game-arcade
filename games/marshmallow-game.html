@@ -473,28 +473,33 @@ function initAudio() {
 // ==================== GAME INIT ====================
 
 function initGame() {
-  // Fixed stick properties - stick pivots from hand position
-  const stickLength = Math.min(W, H) * 0.55; // Fixed length
-  const pivotX = W * 0.08; // Hand/pivot point (left side of screen)
-  const pivotY = H * 0.48; // Middle height
+  // Stick properties - fixed length, hand moves up/down
+  const stickLength = Math.min(W, H) * 0.5; // Fixed length
+  const stickAngle = 0.25; // Consistent downward angle toward fire (radians)
 
-  // Angle range for stick rotation (in radians)
-  const minAngle = -0.45; // Pointing more upward
-  const maxAngle = 0.35;  // Pointing more downward
+  // Hand position (left end of stick) - moves vertically
+  const handX = W * 0.12;
+  const handMinY = H * 0.15;
+  const handMaxY = H * 0.55;
+  const handStartY = H * 0.35;
+
+  // Calculate initial marshmallow position
+  const initialMallowX = handX + Math.cos(stickAngle) * stickLength;
+  const initialMallowY = handStartY + Math.sin(stickAngle) * stickLength;
 
   game = {
-    // Stick pivot and angle
-    stickPivotX: pivotX,
-    stickPivotY: pivotY,
+    // Stick - fixed length and angle, hand moves up/down
     stickLength: stickLength,
-    stickAngle: -0.1, // Current angle
-    stickMinAngle: minAngle,
-    stickMaxAngle: maxAngle,
-    stickAngleSpeed: 0.025,
+    stickAngle: stickAngle,
+    handX: handX,
+    handY: handStartY,
+    handMinY: handMinY,
+    handMaxY: handMaxY,
+    handSpeed: 5,
 
-    // Marshmallow (position calculated from stick angle)
-    mallowX: pivotX + Math.cos(-0.1) * stickLength,
-    mallowY: pivotY + Math.sin(-0.1) * stickLength,
+    // Marshmallow position (calculated from hand + stick)
+    mallowX: initialMallowX,
+    mallowY: initialMallowY,
     mallowRotation: 0,
     mallowRotationSpeed: 0.02,
 
@@ -883,30 +888,28 @@ function drawSmoke() {
 }
 
 function drawStick() {
-  const pivotX = game.stickPivotX;
-  const pivotY = game.stickPivotY;
+  // Hand position (left end) and stick properties
+  const handX = game.handX;
+  const handY = game.handY;
   const length = game.stickLength;
   const angle = game.stickAngle;
 
   // Calculate end point (where marshmallow attaches)
-  const endX = pivotX + Math.cos(angle) * length;
-  const endY = pivotY + Math.sin(angle) * length;
+  const endX = handX + Math.cos(angle) * length;
+  const endY = handY + Math.sin(angle) * length;
 
   // Store for marshmallow drawing
   game.mallowX = endX;
   game.mallowY = endY;
 
-  // Natural stick has slight curve/wobble - use bezier with subtle control points
-  // The stick bends slightly downward due to weight
-  const bendAmount = 12 + (angle - game.stickMinAngle) / (game.stickMaxAngle - game.stickMinAngle) * 8;
-  const midX = pivotX + Math.cos(angle) * length * 0.5;
-  const midY = pivotY + Math.sin(angle) * length * 0.5 + bendAmount;
+  // Natural stick has slight bend due to weight - more bend when lower
+  const bendAmount = 15;
 
-  // Slight irregularity for natural look
-  const wobble1X = pivotX + Math.cos(angle) * length * 0.3;
-  const wobble1Y = pivotY + Math.sin(angle) * length * 0.3 + bendAmount * 0.4;
-  const wobble2X = pivotX + Math.cos(angle) * length * 0.7;
-  const wobble2Y = pivotY + Math.sin(angle) * length * 0.7 + bendAmount * 0.8;
+  // Control points for natural curved stick shape
+  const ctrl1X = handX + Math.cos(angle) * length * 0.33;
+  const ctrl1Y = handY + Math.sin(angle) * length * 0.33 + bendAmount * 0.5;
+  const ctrl2X = handX + Math.cos(angle) * length * 0.66;
+  const ctrl2Y = handY + Math.sin(angle) * length * 0.66 + bendAmount * 0.9;
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -915,20 +918,20 @@ function drawStick() {
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 9;
   ctx.beginPath();
-  ctx.moveTo(pivotX + 4, pivotY + 4);
-  ctx.bezierCurveTo(wobble1X + 4, wobble1Y + 4, wobble2X + 4, wobble2Y + 4, endX + 4, endY + 4);
+  ctx.moveTo(handX + 3, handY + 3);
+  ctx.bezierCurveTo(ctrl1X + 3, ctrl1Y + 3, ctrl2X + 3, ctrl2Y + 3, endX + 3, endY + 3);
   ctx.stroke();
 
   // Main stick - dark bark base
   ctx.strokeStyle = '#3d2817';
   ctx.lineWidth = 8;
   ctx.beginPath();
-  ctx.moveTo(pivotX, pivotY);
-  ctx.bezierCurveTo(wobble1X, wobble1Y, wobble2X, wobble2Y, endX, endY);
+  ctx.moveTo(handX, handY);
+  ctx.bezierCurveTo(ctrl1X, ctrl1Y, ctrl2X, ctrl2Y, endX, endY);
   ctx.stroke();
 
-  // Lighter wood layer
-  const woodGrad = ctx.createLinearGradient(pivotX, pivotY, endX, endY);
+  // Lighter wood layer with natural variation
+  const woodGrad = ctx.createLinearGradient(handX, handY, endX, endY);
   woodGrad.addColorStop(0, '#6B5344');
   woodGrad.addColorStop(0.2, '#7a6350');
   woodGrad.addColorStop(0.4, '#5d4a3a');
@@ -939,19 +942,20 @@ function drawStick() {
   ctx.strokeStyle = woodGrad;
   ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.moveTo(pivotX, pivotY);
-  ctx.bezierCurveTo(wobble1X, wobble1Y, wobble2X, wobble2Y, endX, endY);
+  ctx.moveTo(handX, handY);
+  ctx.bezierCurveTo(ctrl1X, ctrl1Y, ctrl2X, ctrl2Y, endX, endY);
   ctx.stroke();
 
-  // Bark texture - small dark lines/knots along the stick
+  // Bark texture - small dark lines along the stick
   ctx.strokeStyle = '#2d1810';
   ctx.lineWidth = 1;
-  for (let i = 0; i < 8; i++) {
-    const t = 0.1 + i * 0.1 + (Math.sin(i * 7.3) * 0.03); // Slightly irregular spacing
-    const px = pivotX + (endX - pivotX) * t;
-    const py = pivotY + (endY - pivotY) * t + bendAmount * t * (1 - t) * 4;
+  for (let i = 0; i < 7; i++) {
+    const t = 0.12 + i * 0.12;
+    // Interpolate along the bezier curve approximately
+    const px = handX + (endX - handX) * t;
+    const py = handY + (endY - handY) * t + bendAmount * t * (1 - t) * 4;
 
-    // Small bark marks
+    // Small bark marks perpendicular to stick
     const markAngle = angle + Math.PI / 2 + (Math.sin(i * 3.7) * 0.3);
     const markLen = 2 + Math.sin(i * 5.1) * 1.5;
 
@@ -961,18 +965,18 @@ function drawStick() {
     ctx.stroke();
   }
 
-  // Occasional knots
+  // Knots for natural wood look
   ctx.fillStyle = '#2d1810';
-  const knot1T = 0.25;
-  const knot1X = pivotX + (endX - pivotX) * knot1T;
-  const knot1Y = pivotY + (endY - pivotY) * knot1T + bendAmount * knot1T * (1 - knot1T) * 4;
+  const knot1T = 0.28;
+  const knot1X = handX + (endX - handX) * knot1T;
+  const knot1Y = handY + (endY - handY) * knot1T + bendAmount * knot1T * (1 - knot1T) * 4;
   ctx.beginPath();
   ctx.ellipse(knot1X, knot1Y + 1, 3, 2, angle, 0, Math.PI * 2);
   ctx.fill();
 
-  const knot2T = 0.6;
-  const knot2X = pivotX + (endX - pivotX) * knot2T;
-  const knot2Y = pivotY + (endY - pivotY) * knot2T + bendAmount * knot2T * (1 - knot2T) * 4;
+  const knot2T = 0.58;
+  const knot2X = handX + (endX - handX) * knot2T;
+  const knot2Y = handY + (endY - handY) * knot2T + bendAmount * knot2T * (1 - knot2T) * 4;
   ctx.beginPath();
   ctx.ellipse(knot2X, knot2Y - 1, 2, 1.5, angle + 0.2, 0, Math.PI * 2);
   ctx.fill();
@@ -981,21 +985,21 @@ function drawStick() {
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(pivotX, pivotY - 2);
-  ctx.bezierCurveTo(wobble1X, wobble1Y - 2, wobble2X, wobble2Y - 2, endX, endY - 2);
+  ctx.moveTo(handX, handY - 2);
+  ctx.bezierCurveTo(ctrl1X, ctrl1Y - 2, ctrl2X, ctrl2Y - 2, endX, endY - 2);
   ctx.stroke();
 
-  // Fire glow on stick (near the end)
+  // Fire glow on stick near the marshmallow end
   const glowIntensity = 0.15 + Math.sin(game.frameCount * 0.1) * 0.05;
   const glowT = 0.85;
-  const glowX = pivotX + (endX - pivotX) * glowT;
-  const glowY = pivotY + (endY - pivotY) * glowT + bendAmount * glowT * (1 - glowT) * 4;
+  const glowX = handX + (endX - handX) * glowT;
+  const glowY = handY + (endY - handY) * glowT + bendAmount * glowT * (1 - glowT) * 4;
 
-  const fireGlow = ctx.createRadialGradient(glowX, glowY + 20, 0, glowX, glowY + 20, 40);
+  const fireGlow = ctx.createRadialGradient(glowX, glowY + 15, 0, glowX, glowY + 15, 35);
   fireGlow.addColorStop(0, `rgba(255, 150, 50, ${glowIntensity})`);
   fireGlow.addColorStop(1, 'rgba(255, 100, 30, 0)');
   ctx.fillStyle = fireGlow;
-  ctx.fillRect(glowX - 40, glowY - 20, 80, 80);
+  ctx.fillRect(glowX - 40, glowY - 20, 80, 70);
 }
 
 function drawMarshmallow() {
@@ -1256,18 +1260,18 @@ function update() {
 
   game.frameCount++;
 
-  // Input - rotate stick up/down (changes angle)
+  // Input - move hand up/down (raises/lowers the stick)
   if (keys.up) {
-    game.stickAngle = Math.max(game.stickMinAngle, game.stickAngle - game.stickAngleSpeed);
+    game.handY = Math.max(game.handMinY, game.handY - game.handSpeed);
   }
   if (keys.down) {
-    game.stickAngle = Math.min(game.stickMaxAngle, game.stickAngle + game.stickAngleSpeed);
+    game.handY = Math.min(game.handMaxY, game.handY + game.handSpeed);
   }
 
-  // Calculate marshmallow position from stick angle
+  // Calculate marshmallow position from hand position + stick angle/length
   // (This is also done in drawStick, but we need it here for collision)
-  const endX = game.stickPivotX + Math.cos(game.stickAngle) * game.stickLength;
-  const endY = game.stickPivotY + Math.sin(game.stickAngle) * game.stickLength;
+  const endX = game.handX + Math.cos(game.stickAngle) * game.stickLength;
+  const endY = game.handY + Math.sin(game.stickAngle) * game.stickLength;
   game.mallowX = endX;
   game.mallowY = endY;
 
