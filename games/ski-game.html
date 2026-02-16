@@ -6,6 +6,7 @@
 <title>Ski & Snow!</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -335,79 +336,6 @@
     border: 1px solid rgba(255,255,255,0.12);
     color: #ccc;
   }
-
-  /* Controls modal */
-  .controls-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-    padding: 1.5rem;
-  }
-  .controls-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .controls-card {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 1.4rem;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    max-width: 340px;
-    width: 100%;
-  }
-  .controls-card h2 {
-    font-family: 'Lilita One', cursive;
-    font-size: 1.4rem;
-    margin-bottom: 1.2rem;
-  }
-  .controls-row {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin-bottom: 0.9rem;
-    text-align: left;
-  }
-  .controls-row .key-icon {
-    flex-shrink: 0;
-    width: 44px; height: 44px;
-    border: 2.5px solid rgba(100,200,255,0.8);
-    border-radius: 0.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    color: rgb(100,200,255);
-  }
-  .controls-row .key-desc {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: rgba(255,255,255,0.85);
-  }
-  .controls-go-btn {
-    font-family: 'Nunito', sans-serif;
-    font-weight: 800;
-    font-size: 1.05rem;
-    padding: 0.8rem 2.5rem;
-    background: linear-gradient(135deg, var(--accent-blue), #56d4ff);
-    color: #fff;
-    border: none;
-    border-radius: 1rem;
-    cursor: pointer;
-    margin-top: 1.2rem;
-    transition: transform 0.15s;
-  }
-  .controls-go-btn:active { transform: scale(0.96); }
 
   /* Snowflake BG for menus */
   .snowflakes {
