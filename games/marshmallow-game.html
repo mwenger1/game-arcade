@@ -1145,16 +1145,19 @@ function drawMarshmallow() {
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(rotation);
 
   // Size varies slightly with roast
   const baseSize = 22;
   const size = baseSize + (game.roastLevel > 100 ? (game.roastLevel - 100) * 0.05 : 0);
 
-  // Marshmallow dimensions - wider than tall like a real cylindrical marshmallow
-  const mw = size * 1.1;   // half-width
-  const mh = size * 0.75;  // half-height
-  const cornerR = Math.min(mw, mh) * 0.45;
+  // 3D cylinder dimensions
+  const mw = size * 1.1;         // half-width (cylinder radius)
+  const mh = size * 0.7;         // half the cylinder body height
+  const capDepth = mw * 0.22;    // perspective depth of top/bottom elliptical caps
+
+  // 3D rotation - marshmallow spins on the stick
+  const sinR = Math.sin(rotation);
+  const cosR = Math.cos(rotation);
 
   // Determine color based on roast level
   // Perfect zone is 80-100, should be beautiful golden brown
@@ -1221,30 +1224,63 @@ function drawMarshmallow() {
     ctx.fill();
   }
 
-  // Marshmallow shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  // --- SHADOW ---
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.beginPath();
-  ctx.roundRect(-mw + 3, -mh + 3, mw * 2, mh * 2, cornerR);
+  ctx.ellipse(3, 3, mw, mh + capDepth, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Main marshmallow body - cylindrical shape
+  // --- BOTTOM CAP (lower half visible below body) ---
+  ctx.fillStyle = shadowColor;
+  ctx.beginPath();
+  ctx.ellipse(0, mh, mw, capDepth, 0, 0, Math.PI);
+  ctx.closePath();
+  ctx.fill();
+
+  // --- BODY (cylinder curved surface) ---
+  // Highlight position sweeps left-right as marshmallow rotates
+  const hlCenter = 0.5 + sinR * 0.28;
   const bodyGrad = ctx.createLinearGradient(-mw, 0, mw, 0);
   bodyGrad.addColorStop(0, shadowColor);
-  bodyGrad.addColorStop(0.3, baseColor);
-  bodyGrad.addColorStop(0.7, baseColor);
+  bodyGrad.addColorStop(Math.max(0.01, hlCenter - 0.30), shadowColor);
+  bodyGrad.addColorStop(Math.max(0.02, hlCenter - 0.10), baseColor);
+  bodyGrad.addColorStop(Math.min(0.98, hlCenter + 0.10), baseColor);
+  bodyGrad.addColorStop(Math.min(0.99, hlCenter + 0.30), shadowColor);
   bodyGrad.addColorStop(1, shadowColor);
 
   ctx.fillStyle = bodyGrad;
+  ctx.fillRect(-mw, -mh, mw * 2, mh * 2);
+
+  // Specular highlight - bright strip that sweeps with rotation
+  const specX = sinR * mw * 0.45;
+  ctx.fillStyle = highlightColor;
+  ctx.globalAlpha = 0.2 + Math.max(0, cosR) * 0.15;
   ctx.beginPath();
-  ctx.roundRect(-mw, -mh, mw * 2, mh * 2, cornerR);
+  ctx.ellipse(specX, 0, mw * 0.08, mh * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // --- TOP CAP (full ellipse, always visible from above) ---
+  const topGrad = ctx.createRadialGradient(
+    sinR * mw * 0.25, -mh, mw * 0.15,
+    0, -mh, mw
+  );
+  topGrad.addColorStop(0, highlightColor);
+  topGrad.addColorStop(0.5, baseColor);
+  topGrad.addColorStop(1, shadowColor);
+
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, -mh, mw, capDepth, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Top highlight
-  ctx.fillStyle = highlightColor;
-  ctx.globalAlpha = 0.4;
+  // Top cap rim for definition
+  ctx.strokeStyle = shadowColor;
+  ctx.lineWidth = 0.8;
+  ctx.globalAlpha = 0.25;
   ctx.beginPath();
-  ctx.ellipse(-size * 0.15, -mh * 0.5, size * 0.35, size * 0.15, -0.2, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.ellipse(0, -mh, mw, capDepth, 0, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.globalAlpha = 1;
 
   // Roast spots (gradual browning pattern)
@@ -1258,15 +1294,20 @@ function drawMarshmallow() {
     const b = Math.round(60 - spotDarkness * 40);
     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${spotIntensity * 0.6})`;
 
-    // Random-looking but consistent spots
-    for (let i = 0; i < 5; i++) {
-      const angle = i * 1.2 + rotation * 2;
-      const spotX = Math.cos(angle) * mw * 0.6;
-      const spotY = Math.sin(angle) * mh * 0.6;
-      const spotSize = 3 + (i % 3) * 2;
-      ctx.beginPath();
-      ctx.arc(spotX, spotY, spotSize * spotIntensity, 0, Math.PI * 2);
-      ctx.fill();
+    // Spots wrap around the 3D cylinder surface
+    for (let i = 0; i < 6; i++) {
+      const spotAngle = i * 1.1 + rotation * 2;
+      const surfaceX = Math.sin(spotAngle);
+      const facing = Math.cos(spotAngle);
+      // Only draw spots on the visible front side of the cylinder
+      if (facing > -0.2) {
+        const spotX = surfaceX * mw * 0.85;
+        const spotY = ((i % 3) - 1) * mh * 0.55;
+        const spotSize = (3 + (i % 3) * 2) * (0.6 + facing * 0.4);
+        ctx.beginPath();
+        ctx.arc(spotX, spotY, spotSize * spotIntensity, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -1275,8 +1316,8 @@ function drawMarshmallow() {
     // Mini flames
     for (let i = 0; i < 5; i++) {
       const flameAngle = (i / 5) * Math.PI * 2 + game.frameCount * 0.1;
-      const flameX = Math.cos(flameAngle) * size * 0.6;
-      const flameY = Math.sin(flameAngle) * size * 0.8 - 5;
+      const flameX = Math.cos(flameAngle) * mw * 0.7;
+      const flameY = Math.sin(flameAngle) * (mh + capDepth) * 0.7 - 5;
       const flameH = 12 + Math.sin(game.frameCount * 0.3 + i) * 5;
 
       const flameGrad = ctx.createLinearGradient(flameX, flameY, flameX, flameY - flameH);
@@ -1293,14 +1334,14 @@ function drawMarshmallow() {
 
     // Spawn sparks (limit total to prevent memory issues)
     if (game.frameCount % 5 === 0 && game.sparkParticles.length < 50) {
-      game.sparkParticles.push(createSparkParticle(x, y - size));
+      game.sparkParticles.push(createSparkParticle(x, y - mh - capDepth));
     }
   }
 
-  // Stick insertion point
+  // Stick insertion point (on the bottom cap)
   ctx.fillStyle = '#6B5344';
   ctx.beginPath();
-  ctx.ellipse(0, mh * 0.85, 4, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, mh + capDepth * 0.4, 4, 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
