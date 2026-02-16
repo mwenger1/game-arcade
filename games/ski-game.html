@@ -783,52 +783,140 @@ function drawPlayer() {
 
   if (isBoard) {
     // === SNOWBOARDER (sideways stance) ===
+    // Board points downhill (vertical on screen)
+    // Rider stands upright but rotated 90 degrees to face sideways (left or right)
 
-    // Snowboard - elongated, perpendicular to slope
-    ctx.fillStyle = '#2d3436';
+    // Snowboard - elongated vertical shape pointing downhill
+    // Board base (dark edge)
+    ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.ellipse(0, 23, 24, 4.5, 0, 0, Math.PI * 2);
+    ctx.roundRect(-5, 5, 10, 45, 4);
     ctx.fill();
-    // Board top color
+    // Board top surface
     ctx.fillStyle = outfitColor;
     ctx.beginPath();
-    ctx.ellipse(0, 23, 22, 3.5, 0, 0, Math.PI * 2);
+    ctx.roundRect(-4, 7, 8, 41, 3);
     ctx.fill();
-    // Center stripe
+    // Center stripe design
     ctx.fillStyle = outfitColor2;
-    ctx.fillRect(-14, 22, 28, 2);
+    ctx.fillRect(-1, 10, 2, 34);
+    // Nose and tail highlights
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.roundRect(-2, 8, 4, 6, 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(-2, 40, 4, 6, 2);
+    ctx.fill();
 
-    // Bindings on board
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(-10, 21, 6, 4);
-    ctx.fillRect(4, 21, 6, 4);
+    // Bindings on board (across the vertical board)
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-6, 18, 12, 5);
+    ctx.fillRect(-6, 28, 12, 5);
 
-    // Boots (rotated sideways on bindings)
+    // The rider faces sideways (looking left), body is vertical/upright
+    // We see them from behind, so we see their back
+
+    // Boots (on bindings, angled for duck stance when viewed from above)
     ctx.fillStyle = '#1a1a1a';
+    // Front boot (on front binding)
     ctx.save();
-    ctx.translate(-7, 18);
-    ctx.rotate(0.4);
-    ctx.fillRect(-3, -2, 7, 5);
+    ctx.translate(0, 20);
+    ctx.rotate(0.3); // slight angle
+    ctx.beginPath();
+    ctx.roundRect(-4, -3, 8, 6, 1);
+    ctx.fill();
     ctx.restore();
+    // Back boot (on back binding)
     ctx.save();
-    ctx.translate(7, 18);
-    ctx.rotate(-0.4);
-    ctx.fillRect(-4, -2, 7, 5);
+    ctx.translate(0, 30);
+    ctx.rotate(-0.3); // opposite angle
+    ctx.beginPath();
+    ctx.roundRect(-4, -3, 8, 6, 1);
+    ctx.fill();
     ctx.restore();
 
-    // Legs (sideways stance, slightly angled outward)
+    // Legs (vertical, going up from boots) - viewed from behind/side
     ctx.fillStyle = '#2d3436';
+    // Front leg
+    ctx.beginPath();
+    ctx.roundRect(-3, 6, 6, 14, 2);
+    ctx.fill();
+    // Back leg (slightly behind, offset to show depth)
+    ctx.beginPath();
+    ctx.roundRect(-2, 8, 5, 12, 2);
+    ctx.fill();
+
+    // Torso (rotated 90 degrees - we see the side profile, narrow)
+    ctx.fillStyle = outfitColor;
+    ctx.beginPath();
+    ctx.roundRect(-4, -12, 8, 20, 3);
+    ctx.fill();
+    // Jacket side detail
+    ctx.fillStyle = outfitColor2;
+    ctx.fillRect(-2, -10, 4, 16);
+
+    // Arms (one in front, one behind - side view)
+    ctx.fillStyle = outfitColor;
+    // Back arm (partially hidden)
     ctx.save();
-    ctx.translate(-5, 6);
-    ctx.rotate(0.15);
-    ctx.fillRect(-3, 0, 6, 13);
+    ctx.translate(2, -6);
+    ctx.rotate(0.4);
+    ctx.beginPath();
+    ctx.roundRect(-2, 0, 4, 10, 2);
+    ctx.fill();
     ctx.restore();
+    // Front arm (more visible, reaching forward for balance)
     ctx.save();
-    ctx.translate(5, 6);
-    ctx.rotate(-0.15);
-    ctx.fillRect(-3, 0, 6, 13);
+    ctx.translate(-2, -8);
+    ctx.rotate(-0.5);
+    ctx.beginPath();
+    ctx.roundRect(-2, 0, 5, 12, 2);
+    ctx.fill();
     ctx.restore();
 
+    // Head (side profile - oval shape)
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -20, 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair (side view)
+    ctx.fillStyle = hairColor;
+    if (isGirl) {
+      // Hair on back of head, side view
+      ctx.beginPath();
+      ctx.ellipse(2, -22, 5, 7, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Ponytail or hair flowing back
+      ctx.beginPath();
+      ctx.ellipse(6, -18, 4, 6, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Short hair, side view
+      ctx.beginPath();
+      ctx.ellipse(1, -23, 5, 5, 0, Math.PI * 0.7, Math.PI * 2.1);
+      ctx.fill();
+    }
+
+    // Helmet (side view)
+    ctx.fillStyle = outfitColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -24, 7, 6, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Goggles (side view - just the side edge)
+    ctx.fillStyle = '#dfe6e9';
+    ctx.beginPath();
+    ctx.roundRect(-5, -22, 6, 4, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(86,212,255,0.6)';
+    ctx.beginPath();
+    ctx.roundRect(-4, -21, 4, 2, 1);
+    ctx.fill();
+
+    ctx.restore();
+    return;
   } else {
     // === SKIER ===
     // Legs
