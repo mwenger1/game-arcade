@@ -52,3 +52,29 @@ Games are located in the `games/` subdirectory. Each game is a **self-contained 
   url: 'games/my-game.html'
 }
 ```
+
+## Project Standards
+
+### Game Index Requirements
+
+- **All games must be linked from `index.html`** - This file serves as the central directory for accessing every game in the project.
+- When adding a new game, you **must** also update `index.html` to include an entry in the `GAMES` array.
+- No game should exist in isolation without being discoverable from the main hub.
+
+### Mobile Optimization Standards
+
+- **All pages must be optimized for mobile devices**, including `index.html` and individual game pages.
+- Design layouts so key content is visible "above the fold" whenever reasonably possible.
+- If the list of games grows long:
+  - Use a responsive layout (e.g., two columns on mobile where appropriate)
+  - Make the list scrollable in a clean and user-friendly way
+  - Avoid layouts that require excessive vertical scrolling before users can see available games
+- Use touch-friendly controls: buttons sized appropriately for touch input, adequate spacing between interactive elements.
+
+### Shared Components and Styling
+
+- **Reuse common UI components** across games whenever possible (e.g., instructional modals, back buttons, settings panels).
+- **Extract shared styles** into a common `/css` folder instead of duplicating styles across individual game files.
+- Keep shared components consistent in design and behavior across the project.
+- Prefer modular, reusable CSS and utility patterns to reduce duplication and improve maintainability.
+- When creating new shared components, document their usage and expected behavior.
