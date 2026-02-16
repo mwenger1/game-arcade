@@ -294,6 +294,7 @@ const cv = document.getElementById('gc');
 const cx = cv.getContext('2d');
 let W, H;
 const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+let G = null;
 
 function resize() {
   W = cv.width = window.innerWidth;
@@ -321,7 +322,6 @@ const SZ = {
 let gender = null;
 let running = false;
 let loopId = null;
-let G = null;
 
 // ==================== MENU ====================
 function pickG(g, btn) {
