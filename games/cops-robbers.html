@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Cops & Robbers!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent-blue: #3a7bd5;
+    --accent-red: #ff4444;
+    --accent-green: #2ed573;
+    --accent-gold: #ffd700;
+    --card-bg: rgba(255,255,255,0.08);
+    --card-border: rgba(255,255,255,0.15);
+    --dark-bg: #1a1a3e;
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--dark-bg);
+    color: #fff;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  /* =========== SCREENS =========== */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.35s, transform 0.35s;
+    padding: 1.5rem;
+  }
+  .screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+  }
+
+  .menu-bg {
+    background: linear-gradient(170deg, #1a1040 0%, #2d1b69 40%, #1a1a4e 100%);
+  }
+
+  .screen h1 {
+    font-family: 'Lilita One', cursive;
+    font-size: clamp(2rem, 7vw, 3rem);
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .screen h1 .gradient-text {
+    background: linear-gradient(135deg, var(--accent-red), #fff, var(--accent-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .screen .subtitle {
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .choice-label {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 1px;
+  }
+
+  .choice-row {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1rem 1.5rem;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 1.2rem;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 130px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice-btn:active { transform: scale(0.95); }
+  .choice-btn.selected {
+    border-color: var(--accent-red);
+    background: rgba(255,68,68,0.2);
+    box-shadow: 0 0 20px rgba(255,68,68,0.3);
+  }
+
+  .char-preview {
+    width: 64px;
+    height: 80px;
+    position: relative;
+  }
+
+  .go-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    padding: 0.9rem 3rem;
+    background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+    color: #fff;
+    border: none;
+    border-radius: 1.2rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: transform 0.15s, filter 0.15s, opacity 0.3s;
+    letter-spacing: 0.5px;
+  }
+  .go-btn:active { transform: scale(0.95); filter: brightness(1.1); }
+  .go-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+  .back-link {
+    position: absolute;
+    top: 1rem; left: 1rem;
+    display: flex; align-items: center; gap: 0.3rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+    z-index: 60;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* =========== GAME CANVAS =========== */
+  #gameCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    pointer-events: none;
+  }
+  .hud.hidden { display: none; }
+
+  .hud-item {
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    pointer-events: auto;
+  }
+  .hud-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+  }
+  .hud-value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.1rem;
+    color: #fff;
+  }
+
+  /* Mobile controls */
+  .mobile-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 40;
+    display: none;
+    padding: 0.5rem 1rem 1rem;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+  }
+  .mobile-controls.visible { display: flex; }
+
+  .dpad {
+    display: grid;
+    grid-template-areas:
+      ".  up  ."
+      "left . right"
+      ". down .";
+    grid-template-columns: 60px 60px 60px;
+    grid-template-rows: 60px 10px 60px;
+    gap: 4px;
+    pointer-events: auto;
+  }
+
+  .ctrl-btn {
+    width: 60px; height: 60px;
+    background: rgba(0,0,0,0.3);
+    border: 2.5px solid rgba(100,200,255,0.8);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: rgb(100,200,255);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.1s;
+  }
+  .ctrl-btn:active, .ctrl-btn.pressed {
+    background: rgba(100,200,255,0.2);
+  }
+  .ctrl-up    { grid-area: up; }
+  .ctrl-down  { grid-area: down; }
+  .ctrl-left  { grid-area: left; }
+  .ctrl-right { grid-area: right; }
+
+  /* End overlay */
+  .end-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    padding: 1.5rem;
+  }
+  .end-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .end-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 1.4rem;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+  }
+  .end-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+  .end-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+  }
+  .end-msg { color: rgba(255,255,255,0.6); font-weight: 700; margin-bottom: 1rem; font-size: 0.95rem; }
+  .end-btns { display: flex; flex-direction: column; gap: 0.5rem; }
+  .end-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    text-decoration: none;
+    text-align: center;
+    display: block;
+  }
+  .end-btn:active { transform: scale(0.96); }
+  .end-primary {
+    background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+    color: #fff;
+  }
+  .end-secondary {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== CHARACTER SELECT SCREEN ===== -->
+<div class="screen menu-bg" id="selectScreen">
+  <a href="../index.html" class="back-link">‹ Home</a>
+
+  <div style="font-size:3rem; margin-bottom:0.5rem;">🏦💰</div>
+  <h1><span class="gradient-text">Cops & Robbers!</span></h1>
+  <p class="subtitle">Escape the mall before the cops catch you!</p>
+
+  <div class="choice-label">CHOOSE YOUR ROBBER</div>
+  <div class="choice-row" id="charRow">
+    <button class="choice-btn" data-char="boy" onclick="selectChar('boy')">
+      <canvas class="char-preview" id="previewBoy" width="64" height="80"></canvas>
+      <span>Boy</span>
+    </button>
+    <button class="choice-btn" data-char="girl" onclick="selectChar('girl')">
+      <canvas class="char-preview" id="previewGirl" width="64" height="80"></canvas>
+      <span>Girl</span>
+    </button>
+  </div>
+
+  <button class="go-btn" id="goBtn" disabled onclick="startGame()">Rob the Bank!</button>
+</div>
+
+<!-- ===== HOW TO PLAY MODAL ===== -->
+<div class="controls-overlay" id="controlsOverlay">
+  <div class="controls-card">
+    <h2>How to Play</h2>
+    <div class="controls-row">
+      <div class="key-icon">🏃</div>
+      <div class="key-desc">Find the exit to escape the mall</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">👮</div>
+      <div class="key-desc">Avoid the cops — they'll arrest you!</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">◀▶▲▼</div>
+      <div class="key-desc">Arrow keys or on-screen D-pad</div>
+    </div>
+    <button class="controls-go-btn" onclick="dismissControls()">Got it!</button>
+  </div>
+</div>
+
+<!-- ===== GAME AREA ===== -->
+<div class="screen game-bg hidden" id="gameArea">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- HUD -->
+<div class="hud hidden" id="hud">
+  <div class="hud-item">
+    <div class="hud-label">Loot</div>
+    <div class="hud-value" id="hudLoot">💰💎</div>
+  </div>
+  <div class="hud-item">
+    <div class="hud-label">Status</div>
+    <div class="hud-value" id="hudStatus">On the run!</div>
+  </div>
+</div>
+
+<!-- Mobile controls -->
+<div class="mobile-controls" id="mobileControls">
+  <div class="dpad">
+    <div class="ctrl-btn ctrl-up" id="btnUp">▲</div>
+    <div class="ctrl-btn ctrl-left" id="btnLeft">◀</div>
+    <div class="ctrl-btn ctrl-right" id="btnRight">▶</div>
+    <div class="ctrl-btn ctrl-down" id="btnDown">▼</div>
+  </div>
+</div>
+
+<!-- ===== END OVERLAY ===== -->
+<div class="end-overlay" id="endOverlay">
+  <div class="end-card">
+    <div class="end-emoji" id="endEmoji">🚔</div>
+    <div class="end-title" id="endTitle">Caught!</div>
+    <div class="end-msg" id="endMsg">You're going to jail!</div>
+    <div class="end-btns">
+      <button class="end-btn end-primary" onclick="restartGame()">Try Again</button>
+      <a class="end-btn end-secondary" href="../index.html">Home</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONSTANTS =====
+const TILE = 32;
+const PLAYER_SPEED = 2.5;
+const COP_SPEED = 1.2;
+const CIVILIAN_SPEED = 0.6;
+const NUM_COPS = 4;
+const NUM_CIVILIANS = 12;
+
+// Maze layout: 0=wall, 1=floor, 2=start, 3=exit
+// 25 wide x 19 tall
+const MAZE = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,0],
+  [0,1,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0],
+  [0,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,0],
+  [0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,1,0],
+  [0,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0],
+  [0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0],
+  [0,1,1,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0],
+  [0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0],
+  [0,1,0,1,1,1,0,1,0,1,1,1,0,1,1,2,1,1,1,1,1,1,0,1,0],
+  [0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0],
+  [0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,0,1,0],
+  [0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0],
+  [0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,0],
+  [0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0],
+  [0,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,0],
+  [0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0],
+  [0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,3,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+];
+
+const MAZE_H = MAZE.length;
+const MAZE_W = MAZE[0].length;
+
+// ===== STATE =====
+let selectedChar = null;
+let gameRunning = false;
+let animId = null;
+let canvas, ctx, W, H;
+let cameraX = 0, cameraY = 0;
+
+let player = { x: 0, y: 0, dir: 'down' };
+let cops = [];
+let civilians = [];
+let startTile = { r: 0, c: 0 };
+let exitTile = { r: 0, c: 0 };
+
+const keys = { up: false, down: false, left: false, right: false };
+
+// ===== FIND SPECIAL TILES =====
+for (let r = 0; r < MAZE_H; r++) {
+  for (let c = 0; c < MAZE_W; c++) {
+    if (MAZE[r][c] === 2) { startTile = { r, c }; MAZE[r][c] = 1; }
+    if (MAZE[r][c] === 3) { exitTile = { r, c }; MAZE[r][c] = 1; }
+  }
+}
+
+// ===== CHARACTER DRAWING =====
+function drawRobber(ctx, x, y, type, size, dir) {
+  const s = size;
+  const half = s / 2;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Body (striped shirt)
+  const bodyTop = -s * 0.15;
+  const bodyH = s * 0.4;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-half * 0.5, bodyTop, s * 0.5, bodyH);
+  // Stripes
+  ctx.fillStyle = '#222';
+  const stripeH = bodyH / 5;
+  for (let i = 0; i < 5; i += 2) {
+    ctx.fillRect(-half * 0.5, bodyTop + i * stripeH, s * 0.5, stripeH);
+  }
+
+  // Head
+  const headR = s * 0.2;
+  const headY = bodyTop - headR * 0.6;
+  ctx.fillStyle = '#f4c078';
+  ctx.beginPath();
+  ctx.arc(0, headY, headR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mask
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-headR * 0.9, headY - headR * 0.25, headR * 1.8, headR * 0.5);
+
+  // Eyes (white dots on mask)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-headR * 0.35, headY - headR * 0.05, headR * 0.15, 0, Math.PI * 2);
+  ctx.arc(headR * 0.35, headY - headR * 0.05, headR * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (type === 'boy') {
+    // Hat
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-headR * 1.0, headY - headR * 1.2, headR * 2.0, headR * 0.4);
+    ctx.fillRect(-headR * 0.7, headY - headR * 1.6, headR * 1.4, headR * 0.5);
+  } else {
+    // Pigtails
+    ctx.fillStyle = '#8B4513';
+    ctx.beginPath();
+    ctx.arc(-headR * 1.1, headY - headR * 0.2, headR * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(headR * 1.1, headY - headR * 0.2, headR * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair ties
+    ctx.fillStyle = '#ff6b9d';
+    ctx.beginPath();
+    ctx.arc(-headR * 0.85, headY - headR * 0.3, headR * 0.15, 0, Math.PI * 2);
+    ctx.arc(headR * 0.85, headY - headR * 0.3, headR * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Legs
+  ctx.fillStyle = '#444';
+  const legTop = bodyTop + bodyH;
+  ctx.fillRect(-half * 0.35, legTop, s * 0.15, s * 0.3);
+  ctx.fillRect(half * 0.15, legTop, s * 0.15, s * 0.3);
+
+  // Loot bag (small sack on back)
+  ctx.fillStyle = '#8B6914';
+  const bagX = dir === 'left' ? half * 0.3 : -half * 0.6;
+  ctx.beginPath();
+  ctx.ellipse(bagX, bodyTop + bodyH * 0.3, s * 0.12, s * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.font = `${s * 0.12}px serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('$', bagX, bodyTop + bodyH * 0.35);
+
+  ctx.restore();
+}
+
+function drawCop(ctx, x, y, size) {
+  const s = size;
+  const half = s / 2;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Body (blue uniform)
+  const bodyTop = -s * 0.15;
+  const bodyH = s * 0.4;
+  ctx.fillStyle = '#1a3a6a';
+  ctx.fillRect(-half * 0.5, bodyTop, s * 0.5, bodyH);
+
+  // Badge
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(half * 0.1, bodyTop + bodyH * 0.3, s * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  const headR = s * 0.2;
+  const headY = bodyTop - headR * 0.6;
+  ctx.fillStyle = '#f4c078';
+  ctx.beginPath();
+  ctx.arc(0, headY, headR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Police hat
+  ctx.fillStyle = '#1a2a4a';
+  ctx.fillRect(-headR * 1.0, headY - headR * 1.1, headR * 2.0, headR * 0.35);
+  ctx.fillRect(-headR * 0.7, headY - headR * 1.5, headR * 1.4, headR * 0.5);
+  // Hat badge
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(0, headY - headR * 1.1, headR * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(-headR * 0.35, headY - headR * 0.05, headR * 0.1, 0, Math.PI * 2);
+  ctx.arc(headR * 0.35, headY - headR * 0.05, headR * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mouth (stern line)
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-headR * 0.2, headY + headR * 0.35);
+  ctx.lineTo(headR * 0.2, headY + headR * 0.35);
+  ctx.stroke();
+
+  // Legs
+  ctx.fillStyle = '#1a2a4a';
+  const legTop = bodyTop + bodyH;
+  ctx.fillRect(-half * 0.35, legTop, s * 0.15, s * 0.3);
+  ctx.fillRect(half * 0.15, legTop, s * 0.15, s * 0.3);
+
+  ctx.restore();
+}
+
+function drawCivilian(ctx, x, y, size, variant) {
+  const s = size;
+  const half = s / 2;
+  const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#e84393'];
+  const hairColors = ['#3a2010','#8B4513','#DAA520','#2c1810','#c0392b','#555'];
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Body (colored shirt)
+  const bodyTop = -s * 0.15;
+  const bodyH = s * 0.4;
+  ctx.fillStyle = colors[variant % colors.length];
+  ctx.fillRect(-half * 0.45, bodyTop, s * 0.45, bodyH);
+
+  // Head
+  const headR = s * 0.18;
+  const headY = bodyTop - headR * 0.6;
+  ctx.fillStyle = '#f4c078';
+  ctx.beginPath();
+  ctx.arc(0, headY, headR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hair
+  ctx.fillStyle = hairColors[variant % hairColors.length];
+  ctx.beginPath();
+  ctx.arc(0, headY - headR * 0.3, headR * 0.9, Math.PI, 0);
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(-headR * 0.3, headY, headR * 0.08, 0, Math.PI * 2);
+  ctx.arc(headR * 0.3, headY, headR * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  ctx.fillStyle = '#555';
+  const legTop = bodyTop + bodyH;
+  ctx.fillRect(-half * 0.3, legTop, s * 0.12, s * 0.25);
+  ctx.fillRect(half * 0.1, legTop, s * 0.12, s * 0.25);
+
+  ctx.restore();
+}
+
+// ===== DRAW PREVIEWS =====
+function drawPreview(canvasId, type) {
+  const c = document.getElementById(canvasId);
+  const ct = c.getContext('2d');
+  ct.clearRect(0, 0, 64, 80);
+  drawRobber(ct, 32, 50, type, 50, 'down');
+}
+drawPreview('previewBoy', 'boy');
+drawPreview('previewGirl', 'girl');
+
+// ===== CHARACTER SELECTION =====
+function selectChar(type) {
+  selectedChar = type;
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector(`.choice-btn[data-char="${type}"]`).classList.add('selected');
+  document.getElementById('goBtn').disabled = false;
+}
+
+// ===== PATHFINDING (for cops) =====
+function getFloorNeighbors(r, c) {
+  const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+  const results = [];
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < MAZE_H && nc >= 0 && nc < MAZE_W && MAZE[nr][nc] === 1) {
+      results.push({ r: nr, c: nc });
+    }
+  }
+  return results;
+}
+
+// Simple BFS to get next direction towards target
+function bfsDirection(fromR, fromC, toR, toC) {
+  if (fromR === toR && fromC === toC) return null;
+
+  const visited = new Set();
+  const queue = [{ r: fromR, c: fromC, firstDir: null }];
+  visited.add(fromR * MAZE_W + fromC);
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    const neighbors = getFloorNeighbors(cur.r, cur.c);
+    for (const n of neighbors) {
+      const key = n.r * MAZE_W + n.c;
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const dir = cur.firstDir || { dr: n.r - cur.r, dc: n.c - cur.c };
+      if (n.r === toR && n.c === toC) return dir;
+      queue.push({ r: n.r, c: n.c, firstDir: dir });
+    }
+  }
+  return null;
+}
+
+// ===== SPAWN NPCs =====
+function getFloorTiles() {
+  const tiles = [];
+  for (let r = 0; r < MAZE_H; r++) {
+    for (let c = 0; c < MAZE_W; c++) {
+      if (MAZE[r][c] === 1) tiles.push({ r, c });
+    }
+  }
+  return tiles;
+}
+
+function spawnNPCs() {
+  cops = [];
+  civilians = [];
+  const floor = getFloorTiles();
+
+  // Exclude tiles near start
+  const farTiles = floor.filter(t =>
+    Math.abs(t.r - startTile.r) + Math.abs(t.c - startTile.c) > 6
+  );
+
+  // Spawn cops
+  for (let i = 0; i < NUM_COPS; i++) {
+    const t = farTiles[Math.floor(Math.random() * farTiles.length)];
+    cops.push({
+      x: t.c * TILE + TILE / 2,
+      y: t.r * TILE + TILE / 2,
+      dir: null,
+      moveTimer: 0,
+      patrolTarget: null,
+      chasing: false
+    });
+  }
+
+  // Spawn civilians
+  for (let i = 0; i < NUM_CIVILIANS; i++) {
+    const t = floor[Math.floor(Math.random() * floor.length)];
+    civilians.push({
+      x: t.c * TILE + TILE / 2,
+      y: t.r * TILE + TILE / 2,
+      variant: i,
+      dx: 0, dy: 0,
+      moveTimer: 0
+    });
+  }
+}
+
+// ===== COLLISION WITH WALLS =====
+function canMove(x, y, radius) {
+  // Check corners of bounding box
+  const offsets = [
+    [-radius, -radius], [radius, -radius],
+    [-radius, radius], [radius, radius]
+  ];
+  for (const [ox, oy] of offsets) {
+    const c = Math.floor((x + ox) / TILE);
+    const r = Math.floor((y + oy) / TILE);
+    if (r < 0 || r >= MAZE_H || c < 0 || c >= MAZE_W) return false;
+    if (MAZE[r][c] !== 1) return false;
+  }
+  return true;
+}
+
+// ===== GAME START =====
+function startGame() {
+  document.getElementById('selectScreen').classList.add('hidden');
+  document.getElementById('controlsOverlay').classList.add('visible');
+}
+
+function dismissControls() {
+  document.getElementById('controlsOverlay').classList.remove('visible');
+  beginGame();
+}
+
+function beginGame() {
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+
+  document.getElementById('gameArea').classList.remove('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+
+  const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  if (isMobile) {
+    document.getElementById('mobileControls').classList.add('visible');
+  }
+
+  // Init player at start tile
+  player.x = startTile.c * TILE + TILE / 2;
+  player.y = startTile.r * TILE + TILE / 2;
+  player.dir = 'down';
+
+  spawnNPCs();
+  gameRunning = true;
+  gameLoop();
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  W = canvas.width;
+  H = canvas.height;
+}
+window.addEventListener('resize', () => {
+  if (canvas) resizeCanvas();
+});
+
+// ===== INPUT =====
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w')    { keys.up = true; e.preventDefault(); }
+  if (e.key === 'ArrowDown' || e.key === 's')   { keys.down = true; e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key === 'a')   { keys.left = true; e.preventDefault(); }
+  if (e.key === 'ArrowRight' || e.key === 'd')  { keys.right = true; e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w')    keys.up = false;
+  if (e.key === 'ArrowDown' || e.key === 's')   keys.down = false;
+  if (e.key === 'ArrowLeft' || e.key === 'a')   keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd')  keys.right = false;
+});
+
+function setupCtrl(id, dir) {
+  const el = document.getElementById(id);
+  const start = () => { keys[dir] = true; el.classList.add('pressed'); };
+  const end = () => { keys[dir] = false; el.classList.remove('pressed'); };
+  el.addEventListener('touchstart', e => { e.preventDefault(); start(); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); end(); }, { passive: false });
+  el.addEventListener('touchcancel', e => { e.preventDefault(); end(); }, { passive: false });
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+}
+setupCtrl('btnUp', 'up');
+setupCtrl('btnDown', 'down');
+setupCtrl('btnLeft', 'left');
+setupCtrl('btnRight', 'right');
+
+// ===== UPDATE =====
+function update() {
+  // Player movement
+  let dx = 0, dy = 0;
+  if (keys.up)    dy -= PLAYER_SPEED;
+  if (keys.down)  dy += PLAYER_SPEED;
+  if (keys.left)  dx -= PLAYER_SPEED;
+  if (keys.right) dx += PLAYER_SPEED;
+
+  // Normalize diagonal
+  if (dx !== 0 && dy !== 0) {
+    dx *= 0.707;
+    dy *= 0.707;
+  }
+
+  const pRad = TILE * 0.3;
+
+  if (dx !== 0 && canMove(player.x + dx, player.y, pRad)) {
+    player.x += dx;
+  }
+  if (dy !== 0 && canMove(player.x, player.y + dy, pRad)) {
+    player.y += dy;
+  }
+
+  if (dx < 0) player.dir = 'left';
+  else if (dx > 0) player.dir = 'right';
+  if (dy < 0) player.dir = 'up';
+  else if (dy > 0) player.dir = 'down';
+
+  // Check exit
+  const pCol = Math.floor(player.x / TILE);
+  const pRow = Math.floor(player.y / TILE);
+  if (pRow === exitTile.r && pCol === exitTile.c) {
+    endGame(true);
+    return;
+  }
+
+  // Update cops
+  const playerTileR = Math.floor(player.y / TILE);
+  const playerTileC = Math.floor(player.x / TILE);
+
+  for (const cop of cops) {
+    const copR = Math.floor(cop.y / TILE);
+    const copC = Math.floor(cop.x / TILE);
+
+    // Determine if chasing — chase if within ~7 tile manhattan distance
+    const dist = Math.abs(copR - playerTileR) + Math.abs(copC - playerTileC);
+    cop.chasing = dist <= 7;
+
+    let targetR, targetC;
+    if (cop.chasing) {
+      targetR = playerTileR;
+      targetC = playerTileC;
+    } else {
+      // Random patrol
+      cop.moveTimer--;
+      if (cop.moveTimer <= 0 || !cop.patrolTarget) {
+        const floor = getFloorNeighbors(copR, copC);
+        if (floor.length > 0) {
+          // Pick a random patrol destination a few tiles away
+          const allFloor = getFloorTiles();
+          const nearby = allFloor.filter(t =>
+            Math.abs(t.r - copR) + Math.abs(t.c - copC) < 10 &&
+            Math.abs(t.r - copR) + Math.abs(t.c - copC) > 2
+          );
+          cop.patrolTarget = nearby.length > 0
+            ? nearby[Math.floor(Math.random() * nearby.length)]
+            : floor[Math.floor(Math.random() * floor.length)];
+        }
+        cop.moveTimer = 120;
+      }
+      if (cop.patrolTarget) {
+        targetR = cop.patrolTarget.r;
+        targetC = cop.patrolTarget.c;
+      } else {
+        continue;
+      }
+    }
+
+    const dir = bfsDirection(copR, copC, targetR, targetC);
+    if (dir) {
+      const speed = cop.chasing ? COP_SPEED * 1.3 : COP_SPEED;
+      const newX = cop.x + dir.dc * speed;
+      const newY = cop.y + dir.dr * speed;
+      const npcRad = TILE * 0.25;
+      if (canMove(newX, cop.y, npcRad)) cop.x = newX;
+      if (canMove(cop.x, newY, npcRad)) cop.y = newY;
+    }
+
+    // Collision with player
+    const cdx = cop.x - player.x;
+    const cdy = cop.y - player.y;
+    if (Math.sqrt(cdx * cdx + cdy * cdy) < TILE * 0.7) {
+      endGame(false);
+      return;
+    }
+  }
+
+  // Update civilians (random wander)
+  for (const civ of civilians) {
+    civ.moveTimer--;
+    if (civ.moveTimer <= 0) {
+      const civR = Math.floor(civ.y / TILE);
+      const civC = Math.floor(civ.x / TILE);
+      const neighbors = getFloorNeighbors(civR, civC);
+      if (neighbors.length > 0) {
+        const target = neighbors[Math.floor(Math.random() * neighbors.length)];
+        civ.dx = (target.c - civC) * CIVILIAN_SPEED;
+        civ.dy = (target.r - civR) * CIVILIAN_SPEED;
+      }
+      civ.moveTimer = 30 + Math.floor(Math.random() * 40);
+    }
+    const npcRad = TILE * 0.2;
+    const nx = civ.x + civ.dx;
+    const ny = civ.y + civ.dy;
+    if (canMove(nx, civ.y, npcRad)) civ.x = nx;
+    if (canMove(civ.x, ny, npcRad)) civ.y = ny;
+  }
+
+  // Camera follow
+  cameraX = player.x - W / 2;
+  cameraY = player.y - H / 2;
+  // Clamp camera
+  const maxCamX = MAZE_W * TILE - W;
+  const maxCamY = MAZE_H * TILE - H;
+  cameraX = Math.max(0, Math.min(cameraX, maxCamX));
+  cameraY = Math.max(0, Math.min(cameraY, maxCamY));
+}
+
+// ===== RENDER =====
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(-cameraX, -cameraY);
+
+  // Draw maze
+  for (let r = 0; r < MAZE_H; r++) {
+    for (let c = 0; c < MAZE_W; c++) {
+      const x = c * TILE;
+      const y = r * TILE;
+
+      // Skip off-screen tiles
+      if (x + TILE < cameraX || x > cameraX + W || y + TILE < cameraY || y > cameraY + H) continue;
+
+      if (MAZE[r][c] === 0) {
+        // Wall
+        ctx.fillStyle = '#3a3a5c';
+        ctx.fillRect(x, y, TILE, TILE);
+        // Brick pattern
+        ctx.strokeStyle = '#2a2a4c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, TILE, TILE);
+        if (r % 2 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(x + TILE / 2, y);
+          ctx.lineTo(x + TILE / 2, y + TILE);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(x, y + TILE / 2);
+          ctx.lineTo(x + TILE, y + TILE / 2);
+          ctx.stroke();
+        }
+      } else {
+        // Floor
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#d4c8a8' : '#c8bc9e';
+        ctx.fillRect(x, y, TILE, TILE);
+      }
+    }
+  }
+
+  // Draw exit
+  const ex = exitTile.c * TILE;
+  const ey = exitTile.r * TILE;
+  ctx.fillStyle = '#2ed573';
+  ctx.fillRect(ex, ey, TILE, TILE);
+  ctx.font = `${TILE * 0.7}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🚪', ex + TILE / 2, ey + TILE / 2);
+
+  // Draw start/bank area
+  const sx = startTile.c * TILE;
+  const sy = startTile.r * TILE;
+  ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+  ctx.fillRect(sx, sy, TILE, TILE);
+  ctx.font = `${TILE * 0.6}px serif`;
+  ctx.fillText('🏦', sx + TILE / 2, sy + TILE / 2);
+
+  // Draw civilians
+  for (const civ of civilians) {
+    drawCivilian(ctx, civ.x, civ.y, TILE * 0.9, civ.variant);
+  }
+
+  // Draw cops
+  for (const cop of cops) {
+    drawCop(ctx, cop.x, cop.y, TILE * 1.0);
+
+    // Exclamation if chasing
+    if (cop.chasing) {
+      ctx.font = 'bold 14px Nunito, sans-serif';
+      ctx.fillStyle = '#ff4444';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', cop.x, cop.y - TILE * 0.55);
+    }
+  }
+
+  // Draw player
+  drawRobber(ctx, player.x, player.y, selectedChar, TILE * 1.0, player.dir);
+
+  ctx.restore();
+
+  // Mini-map
+  drawMinimap();
+}
+
+function drawMinimap() {
+  const mmScale = 3;
+  const mmW = MAZE_W * mmScale;
+  const mmH = MAZE_H * mmScale;
+  const mmX = W - mmW - 10;
+  const mmY = H - mmH - 80;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+
+  for (let r = 0; r < MAZE_H; r++) {
+    for (let c = 0; c < MAZE_W; c++) {
+      ctx.fillStyle = MAZE[r][c] === 0 ? '#3a3a5c' : '#aaa';
+      ctx.fillRect(mmX + c * mmScale, mmY + r * mmScale, mmScale, mmScale);
+    }
+  }
+
+  // Exit on minimap
+  ctx.fillStyle = '#2ed573';
+  ctx.fillRect(mmX + exitTile.c * mmScale, mmY + exitTile.r * mmScale, mmScale, mmScale);
+
+  // Player on minimap
+  const pr = Math.floor(player.y / TILE);
+  const pc = Math.floor(player.x / TILE);
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(mmX + pc * mmScale - 1, mmY + pr * mmScale - 1, mmScale + 2, mmScale + 2);
+
+  // Cops on minimap
+  ctx.fillStyle = '#ff4444';
+  for (const cop of cops) {
+    const cr = Math.floor(cop.y / TILE);
+    const cc = Math.floor(cop.x / TILE);
+    ctx.fillRect(mmX + cc * mmScale, mmY + cr * mmScale, mmScale, mmScale);
+  }
+}
+
+// ===== GAME LOOP =====
+function gameLoop() {
+  if (!gameRunning) return;
+  update();
+  if (!gameRunning) return; // might have ended during update
+  render();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ===== END GAME =====
+function endGame(won) {
+  gameRunning = false;
+  if (animId) cancelAnimationFrame(animId);
+
+  const overlay = document.getElementById('endOverlay');
+  const emoji = document.getElementById('endEmoji');
+  const title = document.getElementById('endTitle');
+  const msg = document.getElementById('endMsg');
+
+  if (won) {
+    emoji.textContent = '🎉💰';
+    title.textContent = 'You Escaped!';
+    msg.textContent = 'You got away with the loot!';
+  } else {
+    emoji.textContent = '🚔';
+    title.textContent = "Caught! You're in Jail.";
+    msg.textContent = 'The cops got you!';
+  }
+
+  overlay.classList.add('visible');
+}
+
+function restartGame() {
+  document.getElementById('endOverlay').classList.remove('visible');
+  document.getElementById('gameArea').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mobileControls').classList.remove('visible');
+
+  keys.up = keys.down = keys.left = keys.right = false;
+
+  document.getElementById('selectScreen').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
