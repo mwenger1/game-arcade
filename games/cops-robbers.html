@@ -425,8 +425,21 @@ const TURN_SPEED = 0.06;
 const COP_SPEED = 1.8;
 const NUM_COPS = 2;
 const NUM_CIVILIANS = 8;
-const FOV = Math.PI / 2; // 90 degree field of view
+const BASE_FOV = Math.PI / 2; // 90 degree field of view on desktop
 const VIEW_DISTANCE = 20; // How far we can see in tiles
+
+// Dynamic FOV - wider on narrow screens to make hallways feel more spacious
+function getFOV() {
+  const aspectRatio = W / H;
+  if (aspectRatio < 0.7) {
+    // Very narrow (portrait phone) - much wider FOV
+    return Math.PI * 0.7; // ~126 degrees
+  } else if (aspectRatio < 1.0) {
+    // Narrow (tablet portrait) - wider FOV
+    return Math.PI * 0.6; // ~108 degrees
+  }
+  return BASE_FOV; // Desktop/landscape - standard 90 degrees
+}
 
 // Store types with colors and names
 const STORE_TYPES = [
@@ -1218,9 +1231,10 @@ function render() {
   // Raycasting for walls
   const numRays = Math.floor(W / 2);
   const wallData = [];
+  const currentFOV = getFOV(); // Dynamic FOV based on screen size
 
   for (let i = 0; i < numRays; i++) {
-    const rayAngle = player.angle - FOV / 2 + (i / numRays) * FOV;
+    const rayAngle = player.angle - currentFOV / 2 + (i / numRays) * currentFOV;
     const ray = castRay(rayAngle);
 
     // Correct fish-eye effect
@@ -1342,17 +1356,19 @@ function shadeColor(color, factor) {
 }
 
 function drawEntity(entity) {
+  const currentFOV = getFOV();
+
   // Check if entity is in view
   let relAngle = entity.angle - player.angle;
   while (relAngle < -Math.PI) relAngle += Math.PI * 2;
   while (relAngle > Math.PI) relAngle -= Math.PI * 2;
 
-  if (Math.abs(relAngle) > FOV / 2 + 0.2) return; // Not in view
+  if (Math.abs(relAngle) > currentFOV / 2 + 0.2) return; // Not in view
   if (entity.dist > VIEW_DISTANCE * TILE) return; // Too far
   if (entity.dist < TILE * 0.3) return; // Too close
 
   // Calculate screen position
-  const screenX = W / 2 + (relAngle / (FOV / 2)) * (W / 2);
+  const screenX = W / 2 + (relAngle / (currentFOV / 2)) * (W / 2);
   const screenY = H / 2; // Entities at horizon level
 
   // Calculate size based on distance
@@ -1383,6 +1399,8 @@ function drawEntity(entity) {
 }
 
 function drawExitSign() {
+  const currentFOV = getFOV();
+
   // Calculate angle and distance to exit
   const dx = (exitTile.c + 0.5) * TILE - player.x;
   const dy = (exitTile.r + 0.5) * TILE - player.y;
@@ -1393,10 +1411,10 @@ function drawExitSign() {
   while (relAngle < -Math.PI) relAngle += Math.PI * 2;
   while (relAngle > Math.PI) relAngle -= Math.PI * 2;
 
-  if (Math.abs(relAngle) > FOV / 2 + 0.3) return;
+  if (Math.abs(relAngle) > currentFOV / 2 + 0.3) return;
   if (dist > VIEW_DISTANCE * TILE) return;
 
-  const screenX = W / 2 + (relAngle / (FOV / 2)) * (W / 2);
+  const screenX = W / 2 + (relAngle / (currentFOV / 2)) * (W / 2);
   const scale = Math.min(2, (TILE * H * 0.3) / dist);
 
   // Exit glow
@@ -1609,9 +1627,6 @@ document.addEventListener('keydown', e => {
 
 function restartGame() {
   document.getElementById('endOverlay').classList.remove('visible');
-  document.getElementById('gameArea').classList.add('hidden');
-  document.getElementById('hud').classList.add('hidden');
-  document.getElementById('mobileControls').classList.remove('visible');
 
   keys.forward = keys.backward = keys.turnLeft = keys.turnRight = false;
 
@@ -1620,7 +1635,8 @@ function restartGame() {
   arrestStartTime = null;
   gameEnded = false;
 
-  document.getElementById('selectScreen').classList.remove('hidden');
+  // Go directly into gameplay with the same character
+  beginGame();
 }
 </script>
 </body>
