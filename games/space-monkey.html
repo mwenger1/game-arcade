@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Space Monkey!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --space-dark: #0a0a1a;
+    --space-mid: #1a1a3e;
+    --accent-purple: #9b59b6;
+    --accent-blue: #3498db;
+    --accent-pink: #ff6b9d;
+    --accent-orange: #ff9f43;
+    --accent-green: #2ed573;
+    --card-bg: rgba(255,255,255,0.08);
+    --card-border: rgba(255,255,255,0.15);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--space-dark);
+    color: #fff;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  /* =========== MENU SCREENS =========== */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.35s, transform 0.35s;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  .screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+  }
+
+  .menu-bg {
+    background: linear-gradient(170deg, #0a0a1a 0%, #1a1a4e 40%, #2d1b69 100%);
+  }
+
+  .screen h1 {
+    font-family: 'Lilita One', cursive;
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .screen h1 .gradient-text {
+    background: linear-gradient(135deg, #ff6b9d, #9b59b6, #56d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .screen .subtitle {
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .choice-label {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 1px;
+  }
+
+  .choice-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.8rem 1rem;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 1rem;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 70px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice-btn:active { transform: scale(0.95); }
+  .choice-btn.selected {
+    border-color: var(--accent-purple);
+    background: rgba(155,89,182,0.2);
+    box-shadow: 0 0 20px rgba(155,89,182,0.3);
+  }
+  .choice-btn .icon { font-size: 2rem; }
+
+  /* Color swatches for ship selection */
+  .color-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .color-btn:active { transform: scale(0.95); }
+  .color-btn.selected {
+    border-color: #fff;
+    box-shadow: 0 0 15px rgba(255,255,255,0.5);
+    transform: scale(1.1);
+  }
+  .color-btn[data-color="pink"] { background: linear-gradient(135deg, #ff6b9d, #ff8fab); }
+  .color-btn[data-color="purple"] { background: linear-gradient(135deg, #9b59b6, #b784d1); }
+  .color-btn[data-color="grey"] { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
+  .color-btn[data-color="white"] { background: linear-gradient(135deg, #ecf0f1, #bdc3c7); }
+  .color-btn[data-color="blue"] { background: linear-gradient(135deg, #3498db, #5dade2); }
+  .color-btn[data-color="orange"] { background: linear-gradient(135deg, #e67e22, #f39c12); }
+
+  .go-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    padding: 0.8rem 2.5rem;
+    background: linear-gradient(135deg, var(--accent-purple), #56d4ff);
+    color: #fff;
+    border: none;
+    border-radius: 1.2rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: transform 0.15s, filter 0.15s, opacity 0.3s;
+    letter-spacing: 0.5px;
+  }
+  .go-btn:active { transform: scale(0.95); filter: brightness(1.1); }
+  .go-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+  .back-link {
+    position: absolute;
+    top: 1rem; left: 1rem;
+    display: flex; align-items: center; gap: 0.3rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+    z-index: 60;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* Space decoration */
+  .space-deco {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 30vh;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* =========== GAME CANVAS =========== */
+  #gameCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    pointer-events: none;
+  }
+  .hud.hidden { display: none; }
+
+  .hud-left {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+  }
+
+  .hud-item {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    pointer-events: auto;
+  }
+  .hud-label {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+  }
+  .hud-value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.1rem;
+    color: #fff;
+  }
+
+  /* Progress bar for Pluto journey */
+  .progress-container {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    min-width: 120px;
+  }
+  .progress-bar {
+    height: 8px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.3rem;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b9d, #9b59b6, #56d4ff);
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+
+  .hud-menu-btn {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    border: none;
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  /* Mobile controls */
+  .mobile-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 40;
+    display: none;
+    padding: 0.8rem 1rem 1.2rem;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  .mobile-controls.visible { display: flex; }
+
+  .ctrl-group {
+    display: flex;
+    gap: 0.5rem;
+    pointer-events: auto;
+  }
+  .ctrl-group.vert {
+    flex-direction: column;
+    align-items: center;
+  }
+  .ctrl-group.horiz {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .ctrl-btn {
+    width: 60px; height: 60px;
+    background: transparent;
+    border: 2.5px solid rgba(155,89,182,0.8);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: rgb(155,89,182);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.1s;
+  }
+  .ctrl-btn:active, .ctrl-btn.pressed {
+    background: rgba(155,89,182,0.2);
+  }
+
+  /* Crash/Win overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    padding: 1.5rem;
+  }
+  .overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .overlay-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 1.4rem;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+  }
+  .overlay-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+  .overlay-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+  }
+  .overlay-score { color: rgba(255,255,255,0.5); font-weight: 700; margin-bottom: 0.3rem; }
+  .overlay-best { color: var(--accent-orange); font-weight: 800; font-size: 0.85rem; margin-bottom: 1rem; }
+  .overlay-btns { display: flex; flex-direction: column; gap: 0.5rem; }
+  .overlay-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    text-decoration: none;
+    text-align: center;
+    display: block;
+  }
+  .overlay-btn:active { transform: scale(0.96); }
+  .overlay-primary {
+    background: linear-gradient(135deg, var(--accent-purple), #56d4ff);
+    color: #fff;
+  }
+  .overlay-secondary {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+  }
+
+  /* Stars BG for menus */
+  .menu-stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .menu-star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0;
+    animation: twinkle linear infinite;
+  }
+  @keyframes twinkle {
+    0% { opacity: 0.1; }
+    50% { opacity: var(--o, 0.6); }
+    100% { opacity: 0.1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="menu-stars" id="menuStars"></div>
+<canvas id="gameCanvas"></canvas>
+
+<!-- ===== INSTRUCTIONS MODAL ===== -->
+<div class="controls-overlay visible" id="instructionsOverlay">
+  <div class="controls-card">
+    <h2>Space Monkey!</h2>
+    <p style="margin-bottom: 1rem; color: rgba(255,255,255,0.7); font-size: 0.9rem;">
+      Pilot your spaceship through the cosmos and reach Pluto!
+    </p>
+    <div class="controls-row">
+      <div class="key-icon">◀</div>
+      <div class="key-icon">▶</div>
+      <div class="key-desc">Move left & right</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">▲</div>
+      <div class="key-desc">Speed up</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon">▼</div>
+      <div class="key-desc">Slow down</div>
+    </div>
+    <p style="margin: 1rem 0 0.5rem; color: rgba(255,255,255,0.6); font-size: 0.8rem; text-align: left;">
+      <strong style="color: #ff6b6b;">Avoid:</strong> Asteroids, Planets, Alien Ships, Satellites
+    </p>
+    <p style="margin-bottom: 0.5rem; color: rgba(255,255,255,0.6); font-size: 0.8rem; text-align: left;">
+      <strong style="color: #ff6b6b;">Warning:</strong> Crashing into a planet restarts the game!
+    </p>
+    <button class="controls-go-btn" onclick="dismissInstructions()">Start Game!</button>
+  </div>
+</div>
+
+<!-- ===== CHARACTER SELECT SCREEN ===== -->
+<div class="screen menu-bg hidden" id="characterScreen">
+  <a href="../index.html" class="back-link">< Home</a>
+
+  <h1><span class="gradient-text">Choose Your Pilot!</span></h1>
+  <p class="subtitle">Who will journey to Pluto?</p>
+
+  <div class="choice-row" id="characterRow">
+    <button class="choice-btn" data-value="monkey" onclick="selectCharacter('monkey', this)">
+      <span class="icon">🐵</span> Curious George
+    </button>
+    <button class="choice-btn" data-value="boy" onclick="selectCharacter('boy', this)">
+      <span class="icon">👨‍🚀</span> Boy Astronaut
+    </button>
+    <button class="choice-btn" data-value="girl" onclick="selectCharacter('girl', this)">
+      <span class="icon">👩‍🚀</span> Girl Astronaut
+    </button>
+    <button class="choice-btn" data-value="alien" onclick="selectCharacter('alien', this)">
+      <span class="icon">👽</span> Alien
+    </button>
+  </div>
+
+  <button class="go-btn" id="charNextBtn" disabled onclick="showShipScreen()">Next</button>
+</div>
+
+<!-- ===== SHIP COLOR SELECT SCREEN ===== -->
+<div class="screen menu-bg hidden" id="shipScreen">
+  <a href="../index.html" class="back-link">< Home</a>
+
+  <h1><span class="gradient-text">Choose Your Ship!</span></h1>
+  <p class="subtitle">Pick a color for your spaceship</p>
+
+  <div class="choice-row" id="colorRow">
+    <button class="color-btn" data-color="pink" onclick="selectShipColor('pink', this)"></button>
+    <button class="color-btn" data-color="purple" onclick="selectShipColor('purple', this)"></button>
+    <button class="color-btn" data-color="grey" onclick="selectShipColor('grey', this)"></button>
+    <button class="color-btn" data-color="white" onclick="selectShipColor('white', this)"></button>
+    <button class="color-btn" data-color="blue" onclick="selectShipColor('blue', this)"></button>
+    <button class="color-btn" data-color="orange" onclick="selectShipColor('orange', this)"></button>
+  </div>
+
+  <button class="go-btn" id="shipGoBtn" disabled onclick="startGame()">Launch!</button>
+</div>
+
+<!-- ===== HUD ===== -->
+<div class="hud hidden" id="hud">
+  <div class="hud-left">
+    <div class="hud-item">
+      <div class="hud-label">Distance</div>
+      <div class="hud-value" id="hudDist">0 km</div>
+    </div>
+    <div class="progress-container">
+      <div class="hud-label">Journey to Pluto</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+  <button class="hud-menu-btn" onclick="backToMenu()">X</button>
+</div>
+
+<!-- ===== MOBILE CONTROLS ===== -->
+<div class="mobile-controls" id="mobileControls">
+  <div class="ctrl-group horiz">
+    <button class="ctrl-btn" id="btnLeft" data-dir="left">◀</button>
+    <button class="ctrl-btn" id="btnRight" data-dir="right">▶</button>
+  </div>
+  <div class="ctrl-group vert">
+    <button class="ctrl-btn" id="btnUp" data-dir="up">▲</button>
+    <button class="ctrl-btn" id="btnDown" data-dir="down">▼</button>
+  </div>
+</div>
+
+<!-- ===== CRASH OVERLAY ===== -->
+<div class="overlay" id="crashOverlay">
+  <div class="overlay-card">
+    <div class="overlay-emoji" id="crashEmoji">💥</div>
+    <div class="overlay-title" id="crashTitle">Crash!</div>
+    <div class="overlay-score" id="crashScore">Distance: 0 km</div>
+    <div class="overlay-best" id="crashBest">Best: 0 km</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-primary" onclick="restartGame()">Try Again!</button>
+      <a href="../index.html" class="overlay-btn overlay-secondary">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WIN OVERLAY ===== -->
+<div class="overlay" id="winOverlay">
+  <div class="overlay-card">
+    <div class="overlay-emoji">🎉</div>
+    <div class="overlay-title" style="color: #2ed573;">You Reached Pluto!</div>
+    <div class="overlay-score" id="winScore">Journey Complete!</div>
+    <div class="overlay-best" id="winBest">Best: 0 km</div>
+    <div class="overlay-btns">
+      <button class="overlay-btn overlay-primary" onclick="restartGame()">Play Again!</button>
+      <a href="../index.html" class="overlay-btn overlay-secondary">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== SETUP ====================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Choices
+let choices = { character: null, shipColor: null };
+let bestDistance = parseInt(localStorage.getItem('spaceMonkeyBest') || '0', 10);
+
+function selectCharacter(value, btn) {
+  choices.character = value;
+  const row = btn.parentElement;
+  row.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('charNextBtn').disabled = false;
+}
+
+function selectShipColor(value, btn) {
+  choices.shipColor = value;
+  const row = btn.parentElement;
+  row.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('shipGoBtn').disabled = false;
+}
+
+// Detect mobile
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+// ==================== GAME STATE ====================
+
+let game = null;
+let animId = null;
+let gameRunning = false;
+
+const LANE_WIDTH_RATIO = 0.9;
+const BASE_SPEED = 2.5;
+const MAX_SPEED = 7;
+const MIN_SPEED = 1.2;
+const ACCEL = 0.06;
+const DECEL = 0.08;
+const LATERAL_SPEED = 5;
+const PLAYER_W = 40;
+const PLAYER_H = 50;
+const OBSTACLE_SPAWN_INTERVAL_BASE = 50;
+const DIFFICULTY_RAMP = 0.00015;
+const PLUTO_DISTANCE = 10000; // Distance to reach Pluto
+
+// Input state
+const keys = { left: false, right: false, up: false, down: false };
+
+// Ship colors
+const SHIP_COLORS = {
+  pink: { main: '#ff6b9d', accent: '#ff8fab', glow: 'rgba(255,107,157,0.4)' },
+  purple: { main: '#9b59b6', accent: '#b784d1', glow: 'rgba(155,89,182,0.4)' },
+  grey: { main: '#7f8c8d', accent: '#95a5a6', glow: 'rgba(127,140,141,0.4)' },
+  white: { main: '#ecf0f1', accent: '#bdc3c7', glow: 'rgba(236,240,241,0.4)' },
+  blue: { main: '#3498db', accent: '#5dade2', glow: 'rgba(52,152,219,0.4)' },
+  orange: { main: '#e67e22', accent: '#f39c12', glow: 'rgba(230,126,34,0.4)' }
+};
+
+// Character emojis
+const CHARACTER_EMOJIS = {
+  monkey: '🐵',
+  boy: '👨‍🚀',
+  girl: '👩‍🚀',
+  alien: '👽'
+};
+
+// ==================== OBSTACLE TYPES ====================
+
+const OBSTACLE_DEFS = [
+  { type: 'asteroid', w: 35, h: 35, emoji: '🪨', weight: 4, isPlanet: false },
+  { type: 'asteroid2', w: 28, h: 28, emoji: '☄️', weight: 3, isPlanet: false },
+  { type: 'satellite', w: 30, h: 30, emoji: '🛰️', weight: 2, isPlanet: false },
+  { type: 'alienShip', w: 38, h: 35, emoji: '🛸', weight: 2, isPlanet: false },
+  { type: 'earth', w: 55, h: 55, emoji: '🌍', weight: 1, isPlanet: true },
+  { type: 'moon', w: 40, h: 40, emoji: '🌕', weight: 1.5, isPlanet: true },
+  { type: 'mars', w: 50, h: 50, emoji: '🔴', weight: 1, isPlanet: true },
+  { type: 'saturn', w: 65, h: 50, emoji: '🪐', weight: 0.8, isPlanet: true },
+];
+
+function pickObstacle() {
+  const totalW = OBSTACLE_DEFS.reduce((s, o) => s + o.weight, 0);
+  let r = Math.random() * totalW;
+  for (const o of OBSTACLE_DEFS) {
+    r -= o.weight;
+    if (r <= 0) return { ...o };
+  }
+  return { ...OBSTACLE_DEFS[0] };
+}
+
+// ==================== PARTICLE SYSTEM ====================
+
+class Particle {
+  constructor(x, y, vx, vy, life, size, color) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.life = this.maxLife = life;
+    this.size = size;
+    this.color = color;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life--;
+  }
+  draw(ctx) {
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ==================== GAME INIT ====================
+
+function initGame() {
+  const laneW = W * LANE_WIDTH_RATIO;
+  const laneL = (W - laneW) / 2;
+
+  game = {
+    speed: BASE_SPEED,
+    distance: 0,
+    playerX: W / 2,
+    playerY: H * 0.75,
+    laneLeft: laneL,
+    laneRight: laneL + laneW,
+    obstacles: [],
+    spawnTimer: 0,
+    spawnInterval: OBSTACLE_SPAWN_INTERVAL_BASE,
+    particles: [],
+    stars: [],
+    engineParticles: [],
+    crashed: false,
+    crashTimer: 0,
+    won: false,
+    frameCount: 0,
+    bgOffset: 0,
+  };
+
+  // Pre-fill stars
+  for (let i = 0; i < 100; i++) {
+    game.stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      size: 0.5 + Math.random() * 2,
+      speed: 0.3 + Math.random() * 1,
+      opacity: 0.3 + Math.random() * 0.5
+    });
+  }
+}
+
+// ==================== DRAWING ====================
+
+function drawBackground() {
+  // Deep space gradient
+  const spaceGrad = ctx.createLinearGradient(0, 0, 0, H);
+  spaceGrad.addColorStop(0, '#0a0a1a');
+  spaceGrad.addColorStop(0.5, '#1a1a3e');
+  spaceGrad.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = spaceGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Distant nebula effect
+  ctx.globalAlpha = 0.1;
+  const nebula1 = ctx.createRadialGradient(W * 0.2, H * 0.3, 0, W * 0.2, H * 0.3, W * 0.4);
+  nebula1.addColorStop(0, '#9b59b6');
+  nebula1.addColorStop(1, 'transparent');
+  ctx.fillStyle = nebula1;
+  ctx.fillRect(0, 0, W, H);
+
+  const nebula2 = ctx.createRadialGradient(W * 0.8, H * 0.7, 0, W * 0.8, H * 0.7, W * 0.3);
+  nebula2.addColorStop(0, '#3498db');
+  nebula2.addColorStop(1, 'transparent');
+  ctx.fillStyle = nebula2;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  // Stars
+  game.stars.forEach(s => {
+    s.y += s.speed + game.speed * 0.5;
+    if (s.y > H + 5) {
+      s.y = -5;
+      s.x = Math.random() * W;
+    }
+    ctx.globalAlpha = s.opacity;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawPlayer() {
+  const px = game.playerX;
+  const py = game.playerY;
+  const colors = SHIP_COLORS[choices.shipColor];
+  const charEmoji = CHARACTER_EMOJIS[choices.character];
+
+  // Engine particles
+  if (!game.crashed && !game.won && game.speed > 1.5) {
+    for (let i = 0; i < 2; i++) {
+      game.engineParticles.push(new Particle(
+        px + (Math.random() - 0.5) * 10,
+        py + PLAYER_H / 2 + Math.random() * 5,
+        (Math.random() - 0.5) * 1,
+        Math.random() * 2 + game.speed * 0.5,
+        15 + Math.random() * 10,
+        2 + Math.random() * 3,
+        Math.random() > 0.5 ? '#ff6b6b' : '#ff9f43'
+      ));
+    }
+  }
+
+  // Draw engine particles
+  game.engineParticles.forEach(p => { p.update(); p.draw(ctx); });
+  game.engineParticles = game.engineParticles.filter(p => p.life > 0);
+
+  if (game.crashed) {
+    // Crash animation
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.sin(game.crashTimer * 0.3) * 0.5 + game.crashTimer * 0.1);
+    ctx.globalAlpha = Math.max(0, 1 - game.crashTimer / 60);
+    drawShip(0, 0, colors, charEmoji);
+    ctx.restore();
+    return;
+  }
+
+  if (game.won) {
+    // Victory animation - ship flies up and shrinks
+    const scale = Math.max(0.1, 1 - game.crashTimer / 100);
+    ctx.save();
+    ctx.translate(px, py - game.crashTimer * 3);
+    ctx.scale(scale, scale);
+    drawShip(0, 0, colors, charEmoji);
+    ctx.restore();
+    return;
+  }
+
+  // Tilt based on movement
+  let tilt = 0;
+  if (keys.left) tilt = -0.1;
+  if (keys.right) tilt = 0.1;
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(tilt);
+
+  // Ship glow
+  ctx.globalAlpha = 0.3;
+  ctx.shadowColor = colors.glow;
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = colors.main;
+  ctx.beginPath();
+  ctx.ellipse(0, 5, 25, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+
+  drawShip(0, 0, colors, charEmoji);
+
+  ctx.restore();
+}
+
+function drawShip(x, y, colors, charEmoji) {
+  // Main body
+  ctx.fillStyle = colors.main;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 25);
+  ctx.bezierCurveTo(x - 20, y - 10, x - 22, y + 15, x - 15, y + 25);
+  ctx.lineTo(x + 15, y + 25);
+  ctx.bezierCurveTo(x + 22, y + 15, x + 20, y - 10, x, y - 25);
+  ctx.fill();
+
+  // Cockpit window
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.6)';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 5, 12, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Character inside
+  ctx.font = '14px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(charEmoji, x, y - 5);
+
+  // Wings
+  ctx.fillStyle = colors.accent;
+  // Left wing
+  ctx.beginPath();
+  ctx.moveTo(x - 15, y + 10);
+  ctx.lineTo(x - 30, y + 25);
+  ctx.lineTo(x - 25, y + 28);
+  ctx.lineTo(x - 12, y + 20);
+  ctx.fill();
+  // Right wing
+  ctx.beginPath();
+  ctx.moveTo(x + 15, y + 10);
+  ctx.lineTo(x + 30, y + 25);
+  ctx.lineTo(x + 25, y + 28);
+  ctx.lineTo(x + 12, y + 20);
+  ctx.fill();
+
+  // Engine flame
+  if (!game.crashed && !game.won) {
+    const flameHeight = 8 + Math.sin(game.frameCount * 0.3) * 4;
+    const flameGrad = ctx.createLinearGradient(x, y + 25, x, y + 25 + flameHeight);
+    flameGrad.addColorStop(0, '#ff9f43');
+    flameGrad.addColorStop(0.5, '#ff6b6b');
+    flameGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = flameGrad;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y + 25);
+    ctx.lineTo(x, y + 25 + flameHeight);
+    ctx.lineTo(x + 8, y + 25);
+    ctx.fill();
+  }
+}
+
+function drawObstacles() {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  game.obstacles.forEach(o => {
+    // Glow for planets
+    if (o.isPlanet) {
+      ctx.globalAlpha = 0.2;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.w / 2 + 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.font = `${Math.max(o.w, o.h)}px serif`;
+    ctx.fillText(o.emoji, o.x, o.y);
+  });
+}
+
+function drawCrashParticles() {
+  game.particles.forEach(p => { p.update(); p.draw(ctx); });
+  game.particles = game.particles.filter(p => p.life > 0);
+}
+
+// ==================== GAME LOOP ====================
+
+function update() {
+  if (game.crashed || game.won) {
+    game.crashTimer++;
+    if (game.crashTimer === 1 && game.crashed) {
+      // Spawn crash particles
+      for (let i = 0; i < 30; i++) {
+        game.particles.push(new Particle(
+          game.playerX + (Math.random() - 0.5) * 30,
+          game.playerY + (Math.random() - 0.5) * 30,
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 8,
+          30 + Math.random() * 20,
+          2 + Math.random() * 5,
+          ['#fff', '#ff6b6b', '#ff9f43', '#9b59b6'][Math.floor(Math.random() * 4)]
+        ));
+      }
+    }
+    if (game.crashed && game.crashTimer > 60) {
+      showCrashScreen();
+    }
+    if (game.won && game.crashTimer > 80) {
+      showWinScreen();
+    }
+    return;
+  }
+
+  // Speed control
+  if (keys.up) game.speed = Math.min(game.speed + ACCEL, MAX_SPEED);
+  else if (keys.down) game.speed = Math.max(game.speed - DECEL, MIN_SPEED);
+  else {
+    if (game.speed > BASE_SPEED + 0.5) game.speed -= 0.02;
+    else if (game.speed < BASE_SPEED - 0.2) game.speed += 0.02;
+  }
+
+  // Lateral movement
+  const latSpeed = LATERAL_SPEED * (game.speed / BASE_SPEED);
+  if (keys.left) game.playerX -= latSpeed;
+  if (keys.right) game.playerX += latSpeed;
+
+  // Clamp to lane
+  const halfP = PLAYER_W / 2;
+  game.playerX = Math.max(game.laneLeft + halfP, Math.min(game.laneRight - halfP, game.playerX));
+
+  // Distance
+  game.distance += game.speed * 0.5;
+  game.bgOffset += game.speed * 1.5;
+  game.frameCount++;
+
+  // Check for win
+  if (game.distance >= PLUTO_DISTANCE) {
+    game.won = true;
+    game.crashTimer = 0;
+    return;
+  }
+
+  // Spawn obstacles
+  const progress = game.distance / PLUTO_DISTANCE;
+  const diffMult = 1 + progress * 3; // Gets harder as you approach Pluto
+  game.spawnInterval = Math.max(20, OBSTACLE_SPAWN_INTERVAL_BASE - diffMult * 8);
+  game.spawnTimer++;
+
+  if (game.spawnTimer >= game.spawnInterval) {
+    game.spawnTimer = 0;
+    const ob = pickObstacle();
+    const margin = ob.w;
+    ob.x = game.laneLeft + margin + Math.random() * (game.laneRight - game.laneLeft - margin * 2);
+    ob.y = -ob.h;
+
+    game.obstacles.push(ob);
+
+    // Sometimes spawn multiple
+    if (Math.random() < 0.25 * Math.min(diffMult * 0.3, 1)) {
+      const ob2 = pickObstacle();
+      ob2.x = game.laneLeft + ob2.w + Math.random() * (game.laneRight - game.laneLeft - ob2.w * 2);
+      ob2.y = -ob2.h - Math.random() * 40;
+      if (Math.abs(ob2.x - ob.x) > ob.w + 15) {
+        game.obstacles.push(ob2);
+      }
+    }
+  }
+
+  // Move obstacles
+  game.obstacles.forEach(o => {
+    o.y += game.speed * 1.5;
+  });
+  game.obstacles = game.obstacles.filter(o => o.y < H + 80);
+
+  // Collision detection
+  const px = game.playerX;
+  const py = game.playerY;
+  for (const o of game.obstacles) {
+    const dx = Math.abs(px - o.x);
+    const dy = Math.abs(py - o.y);
+    const collideX = (PLAYER_W / 2 + o.w / 2) * 0.55;
+    const collideY = (PLAYER_H / 2 + o.h / 2) * 0.55;
+    if (dx < collideX && dy < collideY) {
+      game.crashed = true;
+      game.crashTimer = 0;
+      game.collidedWithPlanet = o.isPlanet;
+      break;
+    }
+  }
+
+  // Update HUD
+  const distKm = Math.floor(game.distance);
+  document.getElementById('hudDist').textContent = distKm.toLocaleString() + ' km';
+  const progressPct = Math.min(100, (game.distance / PLUTO_DISTANCE) * 100);
+  document.getElementById('progressFill').style.width = progressPct + '%';
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  drawObstacles();
+  drawPlayer();
+  drawCrashParticles();
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+  update();
+  render();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ==================== GAME FLOW ====================
+
+function dismissInstructions() {
+  document.getElementById('instructionsOverlay').classList.remove('visible');
+  document.getElementById('characterScreen').classList.remove('hidden');
+}
+
+function showShipScreen() {
+  document.getElementById('characterScreen').classList.add('hidden');
+  document.getElementById('shipScreen').classList.remove('hidden');
+}
+
+function startGame() {
+  document.getElementById('shipScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  if (isMobile) document.getElementById('mobileControls').classList.add('visible');
+
+  initGame();
+  gameRunning = true;
+  gameLoop();
+}
+
+function showCrashScreen() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+
+  const dist = Math.floor(game.distance);
+  if (dist > bestDistance) {
+    bestDistance = dist;
+    localStorage.setItem('spaceMonkeyBest', bestDistance.toString());
+  }
+
+  if (game.collidedWithPlanet) {
+    document.getElementById('crashEmoji').textContent = '🌍';
+    document.getElementById('crashTitle').textContent = 'Planet Crash!';
+  } else {
+    const crashMsgs = [
+      { emoji: '💥', title: 'Crash!' },
+      { emoji: '☄️', title: 'Asteroid Hit!' },
+      { emoji: '🛸', title: 'Alien Attack!' },
+      { emoji: '😵', title: 'Oops!' },
+    ];
+    const cm = crashMsgs[Math.floor(Math.random() * crashMsgs.length)];
+    document.getElementById('crashEmoji').textContent = cm.emoji;
+    document.getElementById('crashTitle').textContent = cm.title;
+  }
+
+  document.getElementById('crashScore').textContent = `Distance: ${dist.toLocaleString()} km`;
+  document.getElementById('crashBest').textContent = `Best: ${bestDistance.toLocaleString()} km`;
+  document.getElementById('crashOverlay').classList.add('visible');
+}
+
+function showWinScreen() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+
+  const dist = Math.floor(game.distance);
+  if (dist > bestDistance) {
+    bestDistance = dist;
+    localStorage.setItem('spaceMonkeyBest', bestDistance.toString());
+  }
+
+  document.getElementById('winScore').textContent = `Journey: ${dist.toLocaleString()} km`;
+  document.getElementById('winBest').textContent = `Best: ${bestDistance.toLocaleString()} km`;
+  document.getElementById('winOverlay').classList.add('visible');
+}
+
+function restartGame() {
+  document.getElementById('crashOverlay').classList.remove('visible');
+  document.getElementById('winOverlay').classList.remove('visible');
+  initGame();
+  gameRunning = true;
+  gameLoop();
+}
+
+function backToMenu() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mobileControls').classList.remove('visible');
+  document.getElementById('crashOverlay').classList.remove('visible');
+  document.getElementById('winOverlay').classList.remove('visible');
+  document.getElementById('characterScreen').classList.remove('hidden');
+  ctx.clearRect(0, 0, W, H);
+}
+
+// ==================== INPUT ====================
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  keys.left = true;
+  if (e.key === 'ArrowRight') keys.right = true;
+  if (e.key === 'ArrowUp')    { keys.up = true; e.preventDefault(); }
+  if (e.key === 'ArrowDown')  { keys.down = true; e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft')  keys.left = false;
+  if (e.key === 'ArrowRight') keys.right = false;
+  if (e.key === 'ArrowUp')    keys.up = false;
+  if (e.key === 'ArrowDown')  keys.down = false;
+});
+
+// Mobile touch buttons
+function setupCtrl(id, dir) {
+  const el = document.getElementById(id);
+  const start = () => { keys[dir] = true; el.classList.add('pressed'); };
+  const end = () => { keys[dir] = false; el.classList.remove('pressed'); };
+  el.addEventListener('touchstart', e => { e.preventDefault(); start(); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); end(); }, { passive: false });
+  el.addEventListener('touchcancel', end);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+}
+setupCtrl('btnLeft', 'left');
+setupCtrl('btnRight', 'right');
+setupCtrl('btnUp', 'up');
+setupCtrl('btnDown', 'down');
+
+// Prevent scroll on touch
+document.addEventListener('touchmove', e => {
+  if (gameRunning) e.preventDefault();
+}, { passive: false });
+
+// ==================== MENU STARS ====================
+
+const starsCont = document.getElementById('menuStars');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'menu-star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 100 + '%';
+  s.style.width = s.style.height = (1 + Math.random() * 2) + 'px';
+  s.style.setProperty('--o', (0.3 + Math.random() * 0.5).toFixed(2));
+  s.style.animationDuration = (2 + Math.random() * 3) + 's';
+  s.style.animationDelay = (Math.random() * 3) + 's';
+  starsCont.appendChild(s);
+}
+</script>
+</body>
+</html>
