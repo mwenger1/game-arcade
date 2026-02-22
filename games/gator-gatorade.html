@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Gator Gatorade!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/controls-modal.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep: #0d3320;
+    --bg-mid: #1a5c3a;
+    --bg-light: #2a7c4a;
+    --gator-green: #4a7c59;
+    --conveyor-dark: #3a3a3a;
+    --conveyor-light: #5a5a5a;
+    --conveyor-metal: #707070;
+    --pink-flavor: #ff6b9d;
+    --green-flavor: #4cdb6a;
+    --red-flavor: #ff5c5c;
+    --blue-flavor: #56b4ff;
+    --white-flavor: #f0f0f0;
+    --accent-green: #7cff6b;
+    --card-bg: rgba(255,255,255,0.08);
+    --card-border: rgba(255,255,255,0.12);
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(170deg, var(--bg-deep) 0%, var(--bg-mid) 50%, var(--bg-light) 100%);
+    color: #fff;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  /* =========== MENU SCREENS =========== */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.35s, transform 0.35s;
+    padding: 1.5rem;
+  }
+  .screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+  }
+
+  .menu-bg {
+    background: linear-gradient(170deg, #0d3320 0%, #1a4a30 40%, #0d3320 100%);
+  }
+
+  .screen h1 {
+    font-family: 'Lilita One', cursive;
+    font-size: clamp(2rem, 7vw, 3rem);
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .screen h1 .gradient-text {
+    background: linear-gradient(135deg, #7cff6b, #fff, #4cdb6a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .screen .subtitle {
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .choice-label {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 1px;
+  }
+
+  .choice-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.8rem 1rem;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 1rem;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 70px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice-btn:active { transform: scale(0.95); }
+  .choice-btn.selected {
+    border-color: var(--accent-green);
+    background: rgba(124,255,107,0.15);
+    box-shadow: 0 0 20px rgba(124,255,107,0.3);
+  }
+  .choice-btn .icon { font-size: 2rem; }
+
+  /* Flavor buttons with color coding */
+  .flavor-btn { border-width: 3px; }
+  .flavor-btn[data-value="pink"] { border-color: var(--pink-flavor); }
+  .flavor-btn[data-value="pink"] .color-swatch { background: var(--pink-flavor); }
+  .flavor-btn[data-value="green"] { border-color: var(--green-flavor); }
+  .flavor-btn[data-value="green"] .color-swatch { background: var(--green-flavor); }
+  .flavor-btn[data-value="red"] { border-color: var(--red-flavor); }
+  .flavor-btn[data-value="red"] .color-swatch { background: var(--red-flavor); }
+  .flavor-btn[data-value="blue"] { border-color: var(--blue-flavor); }
+  .flavor-btn[data-value="blue"] .color-swatch { background: var(--blue-flavor); }
+  .flavor-btn[data-value="white"] { border-color: var(--white-flavor); }
+  .flavor-btn[data-value="white"] .color-swatch { background: var(--white-flavor); }
+
+  .flavor-btn.selected {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px currentColor;
+  }
+
+  .color-swatch {
+    width: 40px;
+    height: 50px;
+    border-radius: 0.5rem;
+    position: relative;
+    box-shadow: inset 0 -10px 20px rgba(0,0,0,0.2);
+  }
+  .color-swatch::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    height: 12px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 0.3rem;
+  }
+
+  /* Size buttons with gator previews */
+  .size-btn .gator-preview {
+    font-size: 1.8rem;
+  }
+  .size-btn[data-value="small"] .gator-preview { font-size: 1.4rem; }
+  .size-btn[data-value="large"] .gator-preview { font-size: 2.4rem; }
+
+  .go-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    padding: 0.9rem 3rem;
+    background: linear-gradient(135deg, #2ed573, #7cff6b);
+    color: #fff;
+    border: none;
+    border-radius: 1.2rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: transform 0.15s, filter 0.15s, opacity 0.3s;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .go-btn:active { transform: scale(0.95); filter: brightness(1.1); }
+  .go-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+  .back-link {
+    position: absolute;
+    top: 1rem; left: 1rem;
+    display: flex; align-items: center; gap: 0.3rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+    z-index: 60;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* Swamp decoration on menu */
+  .swamp-deco {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 25vh;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .swamp-deco svg { width: 100%; height: 100%; }
+
+  /* =========== GAME CANVAS =========== */
+  #gameCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* HUD */
+  .hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.8rem 1rem;
+    pointer-events: none;
+  }
+  .hud.hidden { display: none; }
+
+  .hud-item {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    pointer-events: auto;
+  }
+  .hud-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+  }
+  .hud-value {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    color: #fff;
+  }
+
+  .hud-menu-btn {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.5rem 0.9rem;
+    border-radius: 1rem;
+    border: none;
+    color: #ccc;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  /* Mobile controls - single large drink button */
+  .mobile-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 40;
+    display: none;
+    padding: 1rem 1rem 2rem;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+  }
+  .mobile-controls.visible { display: flex; }
+
+  .drink-btn {
+    width: 120px;
+    height: 80px;
+    background: linear-gradient(135deg, #2ed573, #7cff6b);
+    border: 3px solid rgba(255,255,255,0.4);
+    border-radius: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Lilita One', cursive;
+    font-size: 1.3rem;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.1s, background 0.1s;
+    pointer-events: auto;
+    box-shadow: 0 4px 15px rgba(46,213,115,0.4);
+  }
+  .drink-btn:active, .drink-btn.pressed {
+    transform: scale(0.95);
+    background: linear-gradient(135deg, #26b862, #6ae55a);
+  }
+
+  /* Game Over overlay */
+  .gameover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    padding: 1.5rem;
+  }
+  .gameover-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .gameover-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 1.4rem;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+  }
+  .gameover-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+  .gameover-title {
+    font-family: 'Lilita One', cursive;
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+  }
+  .gameover-score { color: rgba(255,255,255,0.5); font-weight: 700; margin-bottom: 0.3rem; }
+  .gameover-best { color: var(--accent-green); font-weight: 800; font-size: 0.85rem; margin-bottom: 1rem; }
+  .gameover-btns { display: flex; flex-direction: column; gap: 0.5rem; }
+  .gameover-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    text-decoration: none;
+    text-align: center;
+    display: block;
+  }
+  .gameover-btn:active { transform: scale(0.96); }
+  .gameover-primary {
+    background: linear-gradient(135deg, #2ed573, #7cff6b);
+    color: #fff;
+  }
+  .gameover-secondary {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ccc;
+  }
+
+  /* Swamp bubbles for menu */
+  .bubbles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .bubble {
+    position: absolute;
+    bottom: -20px;
+    border-radius: 50%;
+    background: rgba(124,255,107,0.15);
+    animation: bubbleRise linear infinite;
+  }
+  @keyframes bubbleRise {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-110vh) scale(0.5); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bubbles" id="bubbles"></div>
+<canvas id="gameCanvas"></canvas>
+
+<!-- ===== CHARACTER SELECT SCREEN ===== -->
+<div class="screen menu-bg" id="selectScreen">
+  <a href="../index.html" class="back-link">&#8249; Home</a>
+
+  <h1><span class="gradient-text">Gator Gatorade!</span></h1>
+  <p class="subtitle">Drink only YOUR flavor!</p>
+
+  <div class="choice-label">Pick your flavor!</div>
+  <div class="choice-row" id="flavorRow">
+    <button class="choice-btn flavor-btn" data-value="pink" onclick="selectChoice('flavor','pink',this)">
+      <div class="color-swatch"></div>
+      Pink
+    </button>
+    <button class="choice-btn flavor-btn" data-value="green" onclick="selectChoice('flavor','green',this)">
+      <div class="color-swatch"></div>
+      Green
+    </button>
+    <button class="choice-btn flavor-btn" data-value="red" onclick="selectChoice('flavor','red',this)">
+      <div class="color-swatch"></div>
+      Red
+    </button>
+    <button class="choice-btn flavor-btn" data-value="blue" onclick="selectChoice('flavor','blue',this)">
+      <div class="color-swatch"></div>
+      Blue
+    </button>
+    <button class="choice-btn flavor-btn" data-value="white" onclick="selectChoice('flavor','white',this)">
+      <div class="color-swatch"></div>
+      White
+    </button>
+  </div>
+
+  <div class="choice-label">Pick your gator size!</div>
+  <div class="choice-row" id="sizeRow">
+    <button class="choice-btn size-btn" data-value="small" onclick="selectChoice('size','small',this)">
+      <span class="gator-preview">&#129422;</span> Small
+    </button>
+    <button class="choice-btn size-btn" data-value="medium" onclick="selectChoice('size','medium',this)">
+      <span class="gator-preview">&#129422;</span> Medium
+    </button>
+    <button class="choice-btn size-btn" data-value="large" onclick="selectChoice('size','large',this)">
+      <span class="gator-preview">&#129422;</span> Large
+    </button>
+  </div>
+
+  <button class="go-btn" id="goBtn" disabled onclick="startGame()">Start Drinking! &#129422;</button>
+
+  <div class="swamp-deco">
+    <svg viewBox="0 0 800 200" preserveAspectRatio="none">
+      <polygon points="0,200 0,150 100,130 200,160 300,120 400,150 500,110 600,140 700,130 800,160 800,200" fill="rgba(13,51,32,0.6)"/>
+      <polygon points="0,200 0,170 150,160 300,180 450,155 600,175 750,160 800,180 800,200" fill="rgba(26,92,58,0.5)"/>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== HUD ===== -->
+<div class="hud hidden" id="hud">
+  <div class="hud-item">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="hudScore">0</div>
+  </div>
+  <button class="hud-menu-btn" onclick="backToMenu()">&#10005;</button>
+</div>
+
+<!-- ===== MOBILE CONTROLS ===== -->
+<div class="mobile-controls" id="mobileControls">
+  <button class="drink-btn" id="drinkBtn">DRINK!</button>
+</div>
+
+<!-- ===== CONTROLS MODAL ===== -->
+<div class="controls-overlay" id="controlsOverlay">
+  <div class="controls-card">
+    <h2>How to Play</h2>
+    <div class="controls-row">
+      <div class="key-icon">SPACE</div>
+      <div class="key-desc">Drink when YOUR flavor passes!</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon" style="background: var(--accent-green); border-color: var(--accent-green); color: #fff;">&#10004;</div>
+      <div class="key-desc">Right flavor = +1 point</div>
+    </div>
+    <div class="controls-row">
+      <div class="key-icon" style="background: #ff5c5c; border-color: #ff5c5c; color: #fff;">&#10008;</div>
+      <div class="key-desc">Wrong flavor = Game Over!</div>
+    </div>
+    <button class="controls-go-btn" onclick="dismissControls()">Got it!</button>
+  </div>
+</div>
+
+<!-- ===== GAME OVER OVERLAY ===== -->
+<div class="gameover-overlay" id="gameoverOverlay">
+  <div class="gameover-card">
+    <div class="gameover-emoji" id="gameoverEmoji">&#128546;</div>
+    <div class="gameover-title" id="gameoverTitle">Wrong Flavor!</div>
+    <div class="gameover-score" id="gameoverScore">Score: 0</div>
+    <div class="gameover-best" id="gameoverBest">Best: 0</div>
+    <div class="gameover-btns">
+      <button class="gameover-btn gameover-primary" onclick="restartGame()">Try Again! &#128260;</button>
+      <a href="../index.html" class="gameover-btn gameover-secondary">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== SETUP ====================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Choices
+let choices = { flavor: null, size: null };
+let bestScore = parseInt(localStorage.getItem('gatorGatoradeBest') || '0', 10);
+
+function selectChoice(type, value, btn) {
+  choices[type] = value;
+  const row = btn.parentElement;
+  row.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('goBtn').disabled = !(choices.flavor && choices.size);
+}
+
+// Detect mobile
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+// ==================== GAME CONSTANTS ====================
+
+const FLAVORS = {
+  pink: '#ff6b9d',
+  green: '#4cdb6a',
+  red: '#ff5c5c',
+  blue: '#56b4ff',
+  white: '#f0f0f0'
+};
+
+const FLAVOR_NAMES = ['pink', 'green', 'red', 'blue', 'white'];
+
+const DRINK_ZONES = {
+  small: 50,
+  medium: 80,
+  large: 120
+};
+
+const GATOR_SCALES = {
+  small: 0.7,
+  medium: 1.0,
+  large: 1.4
+};
+
+const BASE_SPEED = 2;
+const CONVEYOR_Y_RATIO = 0.7; // Conveyor at 70% down the screen
+const BOTTLE_SPAWN_INTERVAL = 90; // frames
+const BOTTLE_WIDTH = 35;
+const BOTTLE_HEIGHT = 60;
+
+// ==================== GAME STATE ====================
+
+let game = null;
+let animId = null;
+let gameRunning = false;
+let shownControls = false;
+
+// ==================== GAME INIT ====================
+
+function initGame() {
+  const conveyorY = H * CONVEYOR_Y_RATIO;
+  const drinkZoneWidth = DRINK_ZONES[choices.size];
+  const gatorX = W - 100;
+
+  game = {
+    score: 0,
+    speed: BASE_SPEED,
+    conveyorY: conveyorY,
+    gatorX: gatorX,
+    drinkZoneStart: gatorX - drinkZoneWidth / 2,
+    drinkZoneEnd: gatorX + drinkZoneWidth / 2,
+    drinkZoneWidth: drinkZoneWidth,
+    bottles: [],
+    spawnTimer: 0,
+    frameCount: 0,
+    particles: [],
+    splashParticles: [],
+    gameOver: false,
+    // Gator animation
+    gatorMouthOpen: 0,
+    gatorDrinking: false,
+    // Conveyor animation
+    conveyorOffset: 0,
+    // Difficulty
+    speedMultiplier: 1,
+  };
+}
+
+// ==================== BOTTLE CLASS ====================
+
+class Bottle {
+  constructor(flavor) {
+    this.flavor = flavor;
+    this.color = FLAVORS[flavor];
+    this.x = -BOTTLE_WIDTH;
+    this.y = game.conveyorY - BOTTLE_HEIGHT - 10;
+    this.width = BOTTLE_WIDTH;
+    this.height = BOTTLE_HEIGHT;
+    this.drunk = false;
+    this.wobble = 0;
+    this.wobbleSpeed = 0.1 + Math.random() * 0.05;
+  }
+
+  update(speed) {
+    this.x += speed;
+    this.wobble += this.wobbleSpeed;
+  }
+
+  isInDrinkZone() {
+    const centerX = this.x + this.width / 2;
+    return centerX >= game.drinkZoneStart && centerX <= game.drinkZoneEnd;
+  }
+
+  draw(ctx) {
+    if (this.drunk) return;
+
+    const x = this.x;
+    const y = this.y + Math.sin(this.wobble) * 2;
+    const w = this.width;
+    const h = this.height;
+
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(Math.sin(this.wobble * 0.5) * 0.03);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+
+    // Shadow
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2 + 3, y + h + 5, w / 2.5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Bottle body (plastic shape)
+    ctx.fillStyle = this.color;
+
+    // Main bottle body
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + h);
+    ctx.lineTo(x + 5, y + h * 0.35);
+    ctx.quadraticCurveTo(x + 5, y + h * 0.25, x + 10, y + h * 0.2);
+    ctx.lineTo(x + 10, y + h * 0.1);
+    ctx.lineTo(x + w - 10, y + h * 0.1);
+    ctx.lineTo(x + w - 10, y + h * 0.2);
+    ctx.quadraticCurveTo(x + w - 5, y + h * 0.25, x + w - 5, y + h * 0.35);
+    ctx.lineTo(x + w - 5, y + h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Liquid shine
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.35, y + h * 0.5, 4, h * 0.2, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cap
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 10, y + 2, w - 20, h * 0.08);
+
+    // Label area (white background)
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(x + 7, y + h * 0.45, w - 14, h * 0.25);
+
+    // Gatorade "G" logo approximation
+    ctx.fillStyle = this.color;
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('G', x + w / 2, y + h * 0.575);
+
+    ctx.restore();
+  }
+}
+
+// ==================== PARTICLE CLASS ====================
+
+class Particle {
+  constructor(x, y, vx, vy, life, size, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.life = this.maxLife = life;
+    this.size = size;
+    this.color = color;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.15; // gravity
+    this.life--;
+  }
+
+  draw(ctx) {
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ==================== DRAWING ====================
+
+function drawBackground() {
+  // Swamp gradient background
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, '#1a5c3a');
+  gradient.addColorStop(0.5, '#2a7c4a');
+  gradient.addColorStop(1, '#1a4a30');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+
+  // Swamp water at bottom
+  const waterY = game.conveyorY + 60;
+  const waterGrad = ctx.createLinearGradient(0, waterY, 0, H);
+  waterGrad.addColorStop(0, '#0d3320');
+  waterGrad.addColorStop(1, '#061a10');
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(0, waterY, W, H - waterY);
+
+  // Water ripples
+  ctx.strokeStyle = 'rgba(124,255,107,0.1)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const rippleY = waterY + 20 + i * 30;
+    const offset = (game.frameCount * 0.5 + i * 50) % W;
+    ctx.beginPath();
+    for (let x = -50; x < W + 50; x += 30) {
+      const wx = x + offset;
+      const wy = rippleY + Math.sin((x + game.frameCount * 2) * 0.02) * 5;
+      if (x === -50) ctx.moveTo(wx % (W + 100) - 50, wy);
+      else ctx.lineTo(wx % (W + 100) - 50, wy);
+    }
+    ctx.stroke();
+  }
+
+  // Lily pads
+  ctx.fillStyle = '#2a7c4a';
+  const lilyPads = [
+    { x: W * 0.1, y: waterY + 40, size: 25 },
+    { x: W * 0.3, y: waterY + 70, size: 20 },
+    { x: W * 0.6, y: waterY + 50, size: 30 },
+    { x: W * 0.85, y: waterY + 80, size: 22 },
+  ];
+  lilyPads.forEach(pad => {
+    const wobble = Math.sin(game.frameCount * 0.02 + pad.x) * 3;
+    ctx.beginPath();
+    ctx.ellipse(pad.x, pad.y + wobble, pad.size, pad.size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Lily pad notch
+    ctx.fillStyle = '#1a5c3a';
+    ctx.beginPath();
+    ctx.moveTo(pad.x, pad.y + wobble);
+    ctx.lineTo(pad.x + pad.size * 0.3, pad.y + wobble - pad.size * 0.3);
+    ctx.lineTo(pad.x + pad.size * 0.3, pad.y + wobble + pad.size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#2a7c4a';
+  });
+
+  // Reeds/cattails
+  ctx.fillStyle = '#1a4a30';
+  const reeds = [0.05, 0.15, 0.88, 0.95];
+  reeds.forEach(rx => {
+    const reedX = W * rx;
+    const sway = Math.sin(game.frameCount * 0.03 + rx * 10) * 5;
+    ctx.beginPath();
+    ctx.moveTo(reedX, H);
+    ctx.quadraticCurveTo(reedX + sway, H - 80, reedX + sway * 1.5, H - 120);
+    ctx.quadraticCurveTo(reedX + sway, H - 80, reedX + 4, H);
+    ctx.fill();
+    // Cattail top
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath();
+    ctx.ellipse(reedX + sway * 1.5, H - 130, 4, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a4a30';
+  });
+}
+
+function drawConveyor() {
+  const y = game.conveyorY;
+  const beltHeight = 40;
+
+  // Conveyor frame (metal edges)
+  ctx.fillStyle = '#4a4a4a';
+  ctx.fillRect(0, y - 5, W, beltHeight + 10);
+
+  // Belt surface
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, y, W, beltHeight);
+
+  // Belt treads/ridges
+  ctx.fillStyle = '#3a3a3a';
+  const treadWidth = 20;
+  const offset = game.conveyorOffset % treadWidth;
+  for (let x = -treadWidth + offset; x < W + treadWidth; x += treadWidth) {
+    ctx.fillRect(x, y + 5, 3, beltHeight - 10);
+  }
+
+  // Rollers
+  ctx.fillStyle = '#5a5a5a';
+  const rollerPositions = [50, W / 4, W / 2, W * 0.75, W - 50];
+  rollerPositions.forEach(rx => {
+    ctx.beginPath();
+    ctx.arc(rx, y + beltHeight + 8, 12, 0, Math.PI * 2);
+    ctx.fill();
+    // Roller highlight
+    ctx.fillStyle = '#6a6a6a';
+    ctx.beginPath();
+    ctx.arc(rx - 3, y + beltHeight + 5, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5a5a5a';
+  });
+
+  // Metal edge highlights
+  ctx.strokeStyle = '#6a6a6a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, y - 3);
+  ctx.lineTo(W, y - 3);
+  ctx.stroke();
+
+  // Drink zone indicator
+  ctx.fillStyle = 'rgba(124,255,107,0.15)';
+  ctx.fillRect(game.drinkZoneStart, y - 10, game.drinkZoneWidth, beltHeight + 20);
+
+  // Drink zone border
+  ctx.strokeStyle = 'rgba(124,255,107,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(game.drinkZoneStart, y - 10, game.drinkZoneWidth, beltHeight + 20);
+  ctx.setLineDash([]);
+}
+
+function drawGator() {
+  const x = game.gatorX;
+  const y = game.conveyorY - 20;
+  const scale = GATOR_SCALES[choices.size];
+  const mouthOpen = game.gatorMouthOpen;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  // Gator body (facing left toward bottles)
+  // Tail
+  ctx.fillStyle = '#4a7c59';
+  ctx.beginPath();
+  ctx.moveTo(40, 20);
+  ctx.quadraticCurveTo(80, 10, 100, 30);
+  ctx.quadraticCurveTo(80, 35, 40, 30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tail ridges
+  ctx.fillStyle = '#3a6c49';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(50 + i * 12, 18, 4, 0, Math.PI, true);
+    ctx.fill();
+  }
+
+  // Body
+  ctx.fillStyle = '#4a7c59';
+  ctx.beginPath();
+  ctx.ellipse(20, 25, 35, 25, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body underside (lighter)
+  ctx.fillStyle = '#8ab89a';
+  ctx.beginPath();
+  ctx.ellipse(20, 35, 25, 12, 0, 0, Math.PI);
+  ctx.fill();
+
+  // Back legs
+  ctx.fillStyle = '#4a7c59';
+  ctx.beginPath();
+  ctx.ellipse(35, 45, 12, 8, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Front legs
+  ctx.beginPath();
+  ctx.ellipse(-5, 42, 10, 7, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head (facing left)
+  ctx.fillStyle = '#4a7c59';
+  ctx.beginPath();
+  ctx.ellipse(-30, 15, 30, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Snout upper jaw
+  ctx.beginPath();
+  ctx.moveTo(-35, 10);
+  ctx.lineTo(-75, 5 - mouthOpen * 3);
+  ctx.lineTo(-75, 15);
+  ctx.lineTo(-35, 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // Snout lower jaw
+  ctx.fillStyle = '#3a6c49';
+  ctx.beginPath();
+  ctx.moveTo(-35, 20);
+  ctx.lineTo(-70, 20 + mouthOpen * 8);
+  ctx.lineTo(-70, 25 + mouthOpen * 8);
+  ctx.lineTo(-35, 25);
+  ctx.closePath();
+  ctx.fill();
+
+  // Mouth interior when open
+  if (mouthOpen > 0.1) {
+    ctx.fillStyle = '#ff9090';
+    ctx.beginPath();
+    ctx.moveTo(-35, 15);
+    ctx.lineTo(-65, 10);
+    ctx.lineTo(-65, 20 + mouthOpen * 5);
+    ctx.lineTo(-35, 22);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Teeth
+  ctx.fillStyle = '#fff';
+  const teethCount = 5;
+  for (let i = 0; i < teethCount; i++) {
+    const tx = -40 - i * 7;
+    // Upper teeth
+    ctx.beginPath();
+    ctx.moveTo(tx, 15 - mouthOpen * 2);
+    ctx.lineTo(tx + 2, 20 - mouthOpen);
+    ctx.lineTo(tx - 2, 20 - mouthOpen);
+    ctx.closePath();
+    ctx.fill();
+    // Lower teeth
+    ctx.beginPath();
+    ctx.moveTo(tx, 20 + mouthOpen * 5);
+    ctx.lineTo(tx + 2, 17 + mouthOpen * 3);
+    ctx.lineTo(tx - 2, 17 + mouthOpen * 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Nostrils
+  ctx.fillStyle = '#2a4c39';
+  ctx.beginPath();
+  ctx.arc(-70, 8 - mouthOpen * 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-65, 8 - mouthOpen * 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye ridge
+  ctx.fillStyle = '#3a6c49';
+  ctx.beginPath();
+  ctx.ellipse(-25, 0, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-25, 2, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pupil
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.ellipse(-27, 2, 3, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-29, 0, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawParticles() {
+  game.particles.forEach(p => {
+    p.update();
+    p.draw(ctx);
+  });
+  game.particles = game.particles.filter(p => p.life > 0);
+
+  game.splashParticles.forEach(p => {
+    p.update();
+    p.draw(ctx);
+  });
+  game.splashParticles = game.splashParticles.filter(p => p.life > 0);
+}
+
+function drawSelectedFlavor() {
+  // Show which flavor the player should drink
+  const flavorColor = FLAVORS[choices.flavor];
+  const x = 15;
+  const y = 70;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, 70, 30, 8);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '10px Nunito, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('YOUR FLAVOR', x + 8, y + 12);
+
+  ctx.fillStyle = flavorColor;
+  ctx.beginPath();
+  ctx.roundRect(x + 8, y + 16, 50, 10, 3);
+  ctx.fill();
+}
+
+// ==================== GAME LOGIC ====================
+
+function spawnBottle() {
+  // Weighted random - more of the player's flavor for more opportunities
+  let flavor;
+  if (Math.random() < 0.35) {
+    flavor = choices.flavor; // 35% chance of correct flavor
+  } else {
+    const otherFlavors = FLAVOR_NAMES.filter(f => f !== choices.flavor);
+    flavor = otherFlavors[Math.floor(Math.random() * otherFlavors.length)];
+  }
+  game.bottles.push(new Bottle(flavor));
+}
+
+function tryDrink() {
+  if (game.gameOver || game.gatorDrinking) return;
+
+  // Find bottle in drink zone
+  const bottleInZone = game.bottles.find(b => !b.drunk && b.isInDrinkZone());
+
+  if (!bottleInZone) {
+    // No bottle to drink - no penalty for missing
+    return;
+  }
+
+  // Animate gator drinking
+  game.gatorDrinking = true;
+  game.gatorMouthOpen = 1;
+
+  if (bottleInZone.flavor === choices.flavor) {
+    // Correct! Score point
+    game.score++;
+    document.getElementById('hudScore').textContent = game.score;
+
+    // Success particles
+    const bx = bottleInZone.x + bottleInZone.width / 2;
+    const by = bottleInZone.y + bottleInZone.height / 2;
+    for (let i = 0; i < 15; i++) {
+      game.splashParticles.push(new Particle(
+        bx,
+        by,
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 8 - 3,
+        30 + Math.random() * 20,
+        3 + Math.random() * 4,
+        bottleInZone.color
+      ));
+    }
+
+    bottleInZone.drunk = true;
+
+    // Increase difficulty slightly
+    game.speedMultiplier = Math.min(2.5, 1 + game.score * 0.03);
+
+    // Close mouth after short delay
+    setTimeout(() => {
+      game.gatorMouthOpen = 0;
+      game.gatorDrinking = false;
+    }, 200);
+
+  } else {
+    // Wrong flavor! Game over
+    game.gameOver = true;
+
+    // Spawn "yuck" particles
+    const bx = bottleInZone.x + bottleInZone.width / 2;
+    const by = bottleInZone.y + bottleInZone.height / 2;
+    for (let i = 0; i < 25; i++) {
+      game.particles.push(new Particle(
+        bx,
+        by,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        40 + Math.random() * 20,
+        4 + Math.random() * 5,
+        '#ff5c5c'
+      ));
+    }
+
+    // Screen shake effect
+    shakeScreen();
+
+    // Show game over after delay
+    setTimeout(() => {
+      showGameOver();
+    }, 800);
+  }
+}
+
+function shakeScreen() {
+  const intensity = 10;
+  const duration = 300;
+  const startTime = Date.now();
+
+  function shake() {
+    const elapsed = Date.now() - startTime;
+    if (elapsed < duration && game.gameOver) {
+      const progress = elapsed / duration;
+      const currentIntensity = intensity * (1 - progress);
+      const offsetX = (Math.random() - 0.5) * currentIntensity;
+      const offsetY = (Math.random() - 0.5) * currentIntensity;
+      canvas.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      requestAnimationFrame(shake);
+    } else {
+      canvas.style.transform = '';
+    }
+  }
+  shake();
+}
+
+// ==================== GAME LOOP ====================
+
+function update() {
+  if (game.gameOver) return;
+
+  game.frameCount++;
+
+  // Update conveyor animation
+  const currentSpeed = BASE_SPEED * game.speedMultiplier;
+  game.conveyorOffset += currentSpeed;
+
+  // Spawn bottles
+  game.spawnTimer++;
+  const spawnInterval = Math.max(40, BOTTLE_SPAWN_INTERVAL - game.score * 2);
+  if (game.spawnTimer >= spawnInterval) {
+    game.spawnTimer = 0;
+    spawnBottle();
+  }
+
+  // Update bottles
+  game.bottles.forEach(b => b.update(currentSpeed));
+
+  // Remove bottles that are off screen
+  game.bottles = game.bottles.filter(b => b.x < W + 50);
+
+  // Animate gator mouth closing
+  if (!game.gatorDrinking && game.gatorMouthOpen > 0) {
+    game.gatorMouthOpen = Math.max(0, game.gatorMouthOpen - 0.1);
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  drawConveyor();
+  game.bottles.forEach(b => b.draw(ctx));
+  drawGator();
+  drawParticles();
+  drawSelectedFlavor();
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+  update();
+  render();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ==================== GAME FLOW ====================
+
+function startGame() {
+  document.getElementById('selectScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  if (isMobile) document.getElementById('mobileControls').classList.add('visible');
+
+  initGame();
+
+  if (!shownControls) {
+    shownControls = true;
+    document.getElementById('controlsOverlay').classList.add('visible');
+  } else {
+    gameRunning = true;
+    gameLoop();
+  }
+}
+
+function dismissControls() {
+  document.getElementById('controlsOverlay').classList.remove('visible');
+  gameRunning = true;
+  gameLoop();
+}
+
+function showGameOver() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+
+  if (game.score > bestScore) {
+    bestScore = game.score;
+    localStorage.setItem('gatorGatoradeBest', bestScore.toString());
+  }
+
+  const messages = [
+    { emoji: '\uD83E\uDE7A', title: 'Wrong Flavor!' },
+    { emoji: '\uD83D\uDE35', title: 'Yucky!' },
+    { emoji: '\uD83E\uDD22', title: 'Not that one!' },
+    { emoji: '\uD83D\uDE16', title: 'Blegh!' },
+  ];
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+
+  document.getElementById('gameoverEmoji').textContent = msg.emoji;
+  document.getElementById('gameoverTitle').textContent = msg.title;
+  document.getElementById('gameoverScore').textContent = `Score: ${game.score}`;
+  document.getElementById('gameoverBest').textContent = `\uD83C\uDFC6 Best: ${bestScore}`;
+  document.getElementById('gameoverOverlay').classList.add('visible');
+}
+
+function restartGame() {
+  document.getElementById('gameoverOverlay').classList.remove('visible');
+  initGame();
+  gameRunning = true;
+  gameLoop();
+}
+
+function backToMenu() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mobileControls').classList.remove('visible');
+  document.getElementById('gameoverOverlay').classList.remove('visible');
+  document.getElementById('selectScreen').classList.remove('hidden');
+  ctx.clearRect(0, 0, W, H);
+}
+
+// ==================== INPUT ====================
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();
+    tryDrink();
+  }
+});
+
+// Mobile drink button
+const drinkBtn = document.getElementById('drinkBtn');
+drinkBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  drinkBtn.classList.add('pressed');
+  tryDrink();
+}, { passive: false });
+drinkBtn.addEventListener('touchend', e => {
+  e.preventDefault();
+  drinkBtn.classList.remove('pressed');
+}, { passive: false });
+drinkBtn.addEventListener('mousedown', () => {
+  drinkBtn.classList.add('pressed');
+  tryDrink();
+});
+drinkBtn.addEventListener('mouseup', () => {
+  drinkBtn.classList.remove('pressed');
+});
+drinkBtn.addEventListener('mouseleave', () => {
+  drinkBtn.classList.remove('pressed');
+});
+
+// Prevent scroll on touch
+document.addEventListener('touchmove', e => {
+  if (gameRunning) e.preventDefault();
+}, { passive: false });
+
+// ==================== MENU BUBBLES ====================
+
+const bubblesCont = document.getElementById('bubbles');
+for (let i = 0; i < 20; i++) {
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.style.left = Math.random() * 100 + '%';
+  b.style.width = b.style.height = (8 + Math.random() * 20) + 'px';
+  b.style.animationDuration = (8 + Math.random() * 12) + 's';
+  b.style.animationDelay = (Math.random() * 10) + 's';
+  bubblesCont.appendChild(b);
+}
+</script>
+</body>
+</html>
