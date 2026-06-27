@@ -374,6 +374,64 @@
     color: #ccc;
   }
 
+  /* Level banner */
+  .level-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .level-banner.show .level-banner-text {
+    animation: levelPop 1.5s ease-in-out forwards;
+  }
+  .level-banner.show { opacity: 1; }
+  .level-banner-text {
+    font-family: 'Lilita One', cursive;
+    font-size: clamp(2.5rem, 12vw, 5rem);
+    color: #fff;
+    text-shadow: 0 0 30px rgba(124,255,107,0.8), 0 4px 8px rgba(0,0,0,0.5);
+    background: linear-gradient(135deg, #7cff6b, #fff, #4cdb6a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transform: scale(0);
+  }
+  @keyframes levelPop {
+    0% { transform: scale(0) rotate(-8deg); }
+    25% { transform: scale(1.15) rotate(3deg); }
+    40% { transform: scale(1) rotate(0deg); }
+    75% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1.3); opacity: 0; }
+  }
+
+  /* Win overlay — transparent so the celebrating gator stays visible */
+  #winOverlay {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    justify-content: flex-start;
+    padding-top: 4.5rem;
+  }
+  /* Win card */
+  .win-card {
+    background: rgba(13,51,32,0.82);
+    border-color: rgba(255,215,0,0.45);
+    box-shadow: 0 0 40px rgba(255,215,0,0.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .win-title {
+    background: linear-gradient(135deg, #ffd700, #fff, #ffaa00);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 1.9rem;
+  }
+
   /* Swamp bubbles for menu */
   .bubbles {
     position: fixed;
@@ -460,7 +518,16 @@
     <div class="hud-label">Score</div>
     <div class="hud-value" id="hudScore">0</div>
   </div>
+  <div class="hud-item">
+    <div class="hud-label">Level</div>
+    <div class="hud-value" id="hudLevel">1</div>
+  </div>
   <button class="hud-menu-btn" onclick="backToMenu()">&#10005;</button>
+</div>
+
+<!-- ===== LEVEL BANNER ===== -->
+<div class="level-banner" id="levelBanner">
+  <div class="level-banner-text" id="levelBannerText">Level 2!</div>
 </div>
 
 <!-- ===== MOBILE CONTROLS ===== -->
@@ -485,6 +552,19 @@
       <div class="key-desc">Wrong flavor = Game Over!</div>
     </div>
     <button class="controls-go-btn" onclick="dismissControls()">Got it!</button>
+  </div>
+</div>
+
+<!-- ===== WIN OVERLAY ===== -->
+<div class="gameover-overlay" id="winOverlay">
+  <div class="gameover-card win-card">
+    <div class="gameover-title win-title">&#127942; CHAMPION! &#127942;</div>
+    <div class="gameover-score" id="winScore">You drank every flavor!</div>
+    <div class="gameover-best" id="winBest">Best: 0</div>
+    <div class="gameover-btns">
+      <button class="gameover-btn gameover-primary" onclick="restartGame()">Play Again! &#129422;</button>
+      <a href="../index.html" class="gameover-btn gameover-secondary">Back to Home</a>
+    </div>
   </div>
 </div>
 
@@ -561,6 +641,16 @@ const BOTTLE_SPAWN_INTERVAL = 90; // frames
 const BOTTLE_WIDTH = 35;
 const BOTTLE_HEIGHT = 60;
 
+// ===== LEVELS =====
+const POINTS_PER_LEVEL = 20;
+const TOTAL_LEVELS = 3;
+// Per-level difficulty. Index 0 = level 1.
+const LEVEL_CONFIG = [
+  { speedMult: 1.0, spawnInterval: 90 }, // Level 1
+  { speedMult: 1.6, spawnInterval: 68 }, // Level 2: faster belt, tighter spacing
+  { speedMult: 2.3, spawnInterval: 50 }, // Level 3: fastest, tightest
+];
+
 // ==================== GAME STATE ====================
 
 let game = null;
@@ -595,14 +685,21 @@ function initGame() {
     particles: [],
     splashParticles: [],
     gameOver: false,
+    won: false,
     // Gator animation
     gatorMouthOpen: 0,
     gatorDrinking: false,
     // Conveyor animation
     conveyorOffset: 0,
-    // Difficulty
-    speedMultiplier: 1,
+    // Levels & difficulty
+    level: 1,
+    levelProgress: 0, // points earned within the current level
+    paused: false,    // frozen during level banner / win
+    speedMultiplier: LEVEL_CONFIG[0].speedMult,
+    spawnInterval: LEVEL_CONFIG[0].spawnInterval,
   };
+  document.getElementById('hudScore').textContent = '0';
+  document.getElementById('hudLevel').textContent = '1';
 }
 
 // ==================== BOTTLE CLASS ====================
@@ -861,7 +958,10 @@ function drawGator() {
   const x = game.gatorX;
   const y = game.conveyorY - 20;
   const scale = GATOR_SCALES[choices.size];
-  const mouthOpen = game.gatorMouthOpen;
+  const win = game.won ? game.winAnim : null;
+  // During a burp the gator opens his mouth
+  const mouthOpen = win ? (win.burp > 0 ? Math.sin(win.burp * Math.PI) : 0) : game.gatorMouthOpen;
+  const belly = win ? win.belly : 0;
 
   ctx.save();
   ctx.translate(x, y);
@@ -885,16 +985,18 @@ function drawGator() {
     ctx.fill();
   }
 
-  // Body
+  // Body (inflates with a big gatorade belly on win)
+  const bodyRX = 35 + belly * 22;
+  const bodyRY = 25 + belly * 18;
   ctx.fillStyle = '#4a7c59';
   ctx.beginPath();
-  ctx.ellipse(20, 25, 35, 25, 0, 0, Math.PI * 2);
+  ctx.ellipse(20, 25 + belly * 6, bodyRX, bodyRY, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body underside (lighter)
+  // Body underside (lighter) — grows with belly
   ctx.fillStyle = '#8ab89a';
   ctx.beginPath();
-  ctx.ellipse(20, 35, 25, 12, 0, 0, Math.PI);
+  ctx.ellipse(20, 35 + belly * 12, 25 + belly * 16, 12 + belly * 10, 0, 0, Math.PI);
   ctx.fill();
 
   // Back legs
@@ -999,7 +1101,88 @@ function drawGator() {
   ctx.arc(-29, 0, 2, 0, Math.PI * 2);
   ctx.fill();
 
+  // ===== Victory extras =====
+  if (win) {
+    // Gold medal on a ribbon around the neck.
+    // Neck sits low and forward (left) of the head so the ribbon clears the eye.
+    const neckX = -8;
+    const neckY = 22;
+    const drop = win.medalDrop;            // 0..1
+    const medalY = neckY + 18 + drop * 22; // medal hangs down as it drops
+    const ribbonTop = neckY - 10;
+
+    // Ribbon (two bands forming a V from neck to medal)
+    ctx.strokeStyle = '#3a6ec9';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(neckX - 14, ribbonTop);
+    ctx.lineTo(neckX, medalY - 8);
+    ctx.moveTo(neckX + 14, ribbonTop);
+    ctx.lineTo(neckX, medalY - 8);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'butt';
+
+    if (drop > 0.05) {
+      // Medal disc
+      const r = 13;
+      ctx.fillStyle = '#ffcf33';
+      ctx.beginPath();
+      ctx.arc(neckX, medalY, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Outer rim
+      ctx.strokeStyle = '#e0a800';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(neckX, medalY, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      // Shine
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.beginPath();
+      ctx.arc(neckX - 4, medalY - 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Star
+      ctx.fillStyle = '#fff3a0';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', neckX, medalY + 1);
+    }
+
+    // Burp bubble rising from the mouth
+    if (win.burp > 0) {
+      const p = win.burp; // 0..1
+      const mouthX = -68;
+      const mouthY = 15;
+      ctx.globalAlpha = (1 - p) * 0.8;
+      ctx.fillStyle = 'rgba(220,255,220,0.9)';
+      for (let i = 0; i < 3; i++) {
+        const bsize = 4 + i * 2;
+        const by = mouthY - p * (30 + i * 12) - i * 4;
+        const bx = mouthX - p * 8 - i * 3;
+        ctx.beginPath();
+        ctx.arc(bx, by, bsize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
   ctx.restore();
+
+  // "BURP!" text overlay (drawn in screen space, above the gator)
+  if (win && win.burp > 0.05 && win.burp < 0.6) {
+    ctx.save();
+    ctx.globalAlpha = 1 - win.burp;
+    ctx.fillStyle = '#fff';
+    ctx.font = "bold 22px 'Lilita One', cursive";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BURP!', x - 70 * scale, y - 40 - win.burp * 30);
+    ctx.restore();
+  }
 }
 
 function drawParticles() {
@@ -1053,7 +1236,7 @@ function spawnBottle() {
 }
 
 function tryDrink() {
-  if (game.gameOver || game.gatorDrinking) return;
+  if (game.gameOver || game.won || game.paused || game.gatorDrinking) return;
 
   // Find bottle in drink zone
   const bottleInZone = game.bottles.find(b => !b.drunk && b.isInDrinkZone());
@@ -1089,8 +1272,23 @@ function tryDrink() {
 
     bottleInZone.drunk = true;
 
-    // Increase difficulty slightly
-    game.speedMultiplier = Math.min(2.5, 1 + game.score * 0.03);
+    // Level progression
+    game.levelProgress++;
+    if (game.levelProgress >= POINTS_PER_LEVEL) {
+      if (game.level >= TOTAL_LEVELS) {
+        // Beat the final level - win!
+        // Close mouth then trigger victory
+        setTimeout(() => {
+          game.gatorMouthOpen = 0;
+          game.gatorDrinking = false;
+          startWin();
+        }, 200);
+        return;
+      } else {
+        // Advance to next level
+        advanceLevel();
+      }
+    }
 
     // Close mouth after short delay
     setTimeout(() => {
@@ -1148,6 +1346,67 @@ function shakeScreen() {
   shake();
 }
 
+// ==================== LEVELS ====================
+
+function advanceLevel() {
+  game.level++;
+  game.levelProgress = 0;
+  document.getElementById('hudLevel').textContent = game.level;
+
+  const cfg = LEVEL_CONFIG[game.level - 1];
+  game.speedMultiplier = cfg.speedMult;
+  game.spawnInterval = cfg.spawnInterval;
+
+  // Freeze gameplay briefly and clear the belt for a clean restart
+  game.paused = true;
+  game.bottles = [];
+  game.spawnTimer = 0;
+
+  // Show banner
+  const banner = document.getElementById('levelBanner');
+  document.getElementById('levelBannerText').textContent = `Level ${game.level}!`;
+  banner.classList.add('show');
+
+  setTimeout(() => {
+    banner.classList.remove('show');
+    if (!game.gameOver && !game.won) game.paused = false;
+  }, 1500);
+}
+
+// ==================== WIN ====================
+
+function startWin() {
+  game.won = true;
+  game.paused = true;
+  game.bottles = [];
+
+  // Victory burst particles
+  const cx = game.gatorX - 60 * GATOR_SCALES[choices.size];
+  const cy = game.conveyorY - 30;
+  const goldShades = ['#ffd700', '#ffaa00', '#fff3a0', '#7cff6b'];
+  for (let i = 0; i < 40; i++) {
+    game.splashParticles.push(new Particle(
+      cx + (Math.random() - 0.5) * 40,
+      cy,
+      (Math.random() - 0.5) * 10,
+      (Math.random() - 0.5) * 10 - 4,
+      50 + Math.random() * 40,
+      3 + Math.random() * 5,
+      goldShades[Math.floor(Math.random() * goldShades.length)]
+    ));
+  }
+
+  // Win animation state
+  game.winAnim = {
+    start: Date.now(),
+    medalDrop: 0,   // 0..1 medal lowering onto neck
+    belly: 0,       // 0..1 belly inflation
+    burp: 0,        // burp bubble progress (resets per burp)
+    burpTimer: 0,
+    nextBurp: 60,
+  };
+}
+
 // ==================== GAME LOOP ====================
 
 function update() {
@@ -1155,14 +1414,23 @@ function update() {
 
   game.frameCount++;
 
+  // Drive the victory animation even while everything else is frozen
+  if (game.won) {
+    updateWinAnim();
+    return;
+  }
+
+  // Frozen during level banner — keep frame count advancing (for water/decor)
+  // but don't spawn or move bottles.
+  if (game.paused) return;
+
   // Update conveyor animation
   const currentSpeed = BASE_SPEED * game.speedMultiplier;
   game.conveyorOffset += currentSpeed;
 
   // Spawn bottles
   game.spawnTimer++;
-  const spawnInterval = Math.max(40, BOTTLE_SPAWN_INTERVAL - game.score * 2);
-  if (game.spawnTimer >= spawnInterval) {
+  if (game.spawnTimer >= game.spawnInterval) {
     game.spawnTimer = 0;
     spawnBottle();
   }
@@ -1176,6 +1444,34 @@ function update() {
   // Animate gator mouth closing
   if (!game.gatorDrinking && game.gatorMouthOpen > 0) {
     game.gatorMouthOpen = Math.max(0, game.gatorMouthOpen - 0.1);
+  }
+}
+
+function updateWinAnim() {
+  const a = game.winAnim;
+  // Belly inflates first
+  a.belly = Math.min(1, a.belly + 0.012);
+  // Medal drops down after a short beat
+  if (a.belly > 0.3) a.medalDrop = Math.min(1, a.medalDrop + 0.025);
+
+  // Periodic burps once the gator is settled
+  if (a.medalDrop > 0.8) {
+    a.burpTimer++;
+    if (a.burp > 0) {
+      a.burp += 0.03;
+      if (a.burp >= 1) a.burp = 0;
+    }
+    if (a.burpTimer >= a.nextBurp) {
+      a.burpTimer = 0;
+      a.nextBurp = 90 + Math.random() * 90;
+      a.burp = 0.001; // start a burp
+    }
+  }
+
+  // Show the win card once the show has played a bit
+  if (Date.now() - a.start > 2600 && !a.cardShown) {
+    a.cardShown = true;
+    showWinCard();
   }
 }
 
@@ -1244,8 +1540,22 @@ function showGameOver() {
   document.getElementById('gameoverOverlay').classList.add('visible');
 }
 
+function showWinCard() {
+  // Keep the animation loop running underneath the card so the gator keeps
+  // burping. Just save the score and reveal the overlay.
+  if (game.score > bestScore) {
+    bestScore = game.score;
+    localStorage.setItem('gatorGatoradeBest', bestScore.toString());
+  }
+  document.getElementById('winScore').textContent = `Final Score: ${game.score}`;
+  document.getElementById('winBest').textContent = `\uD83C\uDFC6 Best: ${bestScore}`;
+  document.getElementById('winOverlay').classList.add('visible');
+}
+
 function restartGame() {
   document.getElementById('gameoverOverlay').classList.remove('visible');
+  document.getElementById('winOverlay').classList.remove('visible');
+  cancelAnimationFrame(animId);
   initGame();
   gameRunning = true;
   gameLoop();
@@ -1257,7 +1567,9 @@ function backToMenu() {
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('mobileControls').classList.remove('visible');
   document.getElementById('gameoverOverlay').classList.remove('visible');
+  document.getElementById('winOverlay').classList.remove('visible');
   document.getElementById('selectScreen').classList.remove('hidden');
+  document.getElementById('levelBanner').classList.remove('show');
   ctx.clearRect(0, 0, W, H);
 }
 
