@@ -575,13 +575,19 @@ function initGame() {
   const drinkZoneWidth = DRINK_ZONES[choices.size];
   const gatorX = W - 100;
 
+  // The gator's mouth is drawn at roughly -55 to -75 in local coords from gatorX,
+  // scaled by the gator size. Center the drink zone on the mouth position.
+  const scale = GATOR_SCALES[choices.size];
+  const mouthCenterOffset = -60 * scale; // mouth center in world coords relative to gatorX
+  const drinkZoneCenter = gatorX + mouthCenterOffset;
+
   game = {
     score: 0,
     speed: BASE_SPEED,
     conveyorY: conveyorY,
     gatorX: gatorX,
-    drinkZoneStart: gatorX - drinkZoneWidth / 2,
-    drinkZoneEnd: gatorX + drinkZoneWidth / 2,
+    drinkZoneStart: drinkZoneCenter - drinkZoneWidth / 2,
+    drinkZoneEnd: drinkZoneCenter + drinkZoneWidth / 2,
     drinkZoneWidth: drinkZoneWidth,
     bottles: [],
     spawnTimer: 0,

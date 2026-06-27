@@ -15,6 +15,16 @@ python -m http.server 8000
 # Then visit http://localhost:8000/index.html
 ```
 
+## Deployment
+
+The site is hosted on GitHub Pages from the `main` branch. To deploy, commit and push to `main`:
+
+```bash
+git add <files>
+git commit -m "message"
+git push origin main
+```
+
 ## Architecture
 
 ### Entry Points
