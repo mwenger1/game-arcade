@@ -374,6 +374,16 @@
     color: #ccc;
   }
 
+  /* Wide key for the word "SPACE" so it doesn't overflow the square key box */
+  .controls-row .key-icon.key-wide {
+    width: auto;
+    min-width: 44px;
+    padding: 0 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+
   /* Level banner */
   .level-banner {
     position: fixed;
@@ -540,7 +550,7 @@
   <div class="controls-card">
     <h2>How to Play</h2>
     <div class="controls-row">
-      <div class="key-icon">SPACE</div>
+      <div class="key-icon key-wide">SPACE</div>
       <div class="key-desc">Drink when YOUR flavor passes!</div>
     </div>
     <div class="controls-row">
@@ -689,6 +699,7 @@ function initGame() {
     // Gator animation
     gatorMouthOpen: 0,
     gatorDrinking: false,
+    burp: 0, // standalone burp progress (0..1), used outside the win ceremony
     // Conveyor animation
     conveyorOffset: 0,
     // Levels & difficulty
@@ -959,8 +970,10 @@ function drawGator() {
   const y = game.conveyorY - 20;
   const scale = GATOR_SCALES[choices.size];
   const win = game.won ? game.winAnim : null;
+  // Active burp progress (0..1) — from the win ceremony or a level-up burp.
+  const burpProgress = win ? win.burp : game.burp;
   // During a burp the gator opens his mouth
-  const mouthOpen = win ? (win.burp > 0 ? Math.sin(win.burp * Math.PI) : 0) : game.gatorMouthOpen;
+  const mouthOpen = burpProgress > 0 ? Math.sin(burpProgress * Math.PI) : (win ? 0 : game.gatorMouthOpen);
   const belly = win ? win.belly : 0;
 
   ctx.save();
@@ -1151,36 +1164,37 @@ function drawGator() {
       ctx.fillText('★', neckX, medalY + 1);
     }
 
-    // Burp bubble rising from the mouth
-    if (win.burp > 0) {
-      const p = win.burp; // 0..1
-      const mouthX = -68;
-      const mouthY = 15;
-      ctx.globalAlpha = (1 - p) * 0.8;
-      ctx.fillStyle = 'rgba(220,255,220,0.9)';
-      for (let i = 0; i < 3; i++) {
-        const bsize = 4 + i * 2;
-        const by = mouthY - p * (30 + i * 12) - i * 4;
-        const bx = mouthX - p * 8 - i * 3;
-        ctx.beginPath();
-        ctx.arc(bx, by, bsize, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
+  }
+
+  // Burp bubble rising from the mouth (win ceremony OR level-up burp)
+  if (burpProgress > 0) {
+    const p = burpProgress; // 0..1
+    const mouthX = -68;
+    const mouthY = 15;
+    ctx.globalAlpha = (1 - p) * 0.8;
+    ctx.fillStyle = 'rgba(220,255,220,0.9)';
+    for (let i = 0; i < 3; i++) {
+      const bsize = 4 + i * 2;
+      const by = mouthY - p * (30 + i * 12) - i * 4;
+      const bx = mouthX - p * 8 - i * 3;
+      ctx.beginPath();
+      ctx.arc(bx, by, bsize, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
 
   ctx.restore();
 
   // "BURP!" text overlay (drawn in screen space, above the gator)
-  if (win && win.burp > 0.05 && win.burp < 0.6) {
+  if (burpProgress > 0.05 && burpProgress < 0.6) {
     ctx.save();
-    ctx.globalAlpha = 1 - win.burp;
+    ctx.globalAlpha = 1 - burpProgress;
     ctx.fillStyle = '#fff';
     ctx.font = "bold 22px 'Lilita One', cursive";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('BURP!', x - 70 * scale, y - 40 - win.burp * 30);
+    ctx.fillText('BURP!', x - 70 * scale, y - 40 - burpProgress * 30);
     ctx.restore();
   }
 }
@@ -1362,6 +1376,9 @@ function advanceLevel() {
   game.bottles = [];
   game.spawnTimer = 0;
 
+  // Celebratory burp for clearing the level
+  triggerBurp();
+
   // Show banner
   const banner = document.getElementById('levelBanner');
   document.getElementById('levelBannerText').textContent = `Level ${game.level}!`;
@@ -1390,6 +1407,14 @@ function playBurp() {
   } catch (e) {
     // Audio not available — ignore silently
   }
+}
+
+// Kick off a standalone burp (used on level-up). Plays sound + starts the
+// burp animation, which is advanced in update().
+function triggerBurp() {
+  if (game.burp > 0) return; // already burping
+  game.burp = 0.001;
+  playBurp();
 }
 
 function startWin() {
@@ -1435,6 +1460,12 @@ function update() {
   if (game.won) {
     updateWinAnim();
     return;
+  }
+
+  // Advance a standalone (level-up) burp even while gameplay is paused.
+  if (game.burp > 0) {
+    game.burp = Math.min(1, game.burp + 0.018);
+    if (game.burp >= 1) game.burp = 0;
   }
 
   // Frozen during level banner — keep frame count advancing (for water/decor)
