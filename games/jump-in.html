@@ -848,9 +848,10 @@ function initAttempt(trick) {
     trick,
     phase: 'leap',
     t: 0,                       // air progress 0..1
-    airSpeed: config.board === 'high' ? 0.013 : 0.016,
+    airSpeed: config.board === 'high' ? 0.009 : 0.011,
     meter: null,
     locked: {},                 // one lock per phase
+    posed: false,               // pose tap locked -> diver may fall
     results: { leapAcc: 0, poseAcc: 0, entryAcc: 0, caught: false },
     pop: 0,                     // upward pop from a good leap
     // catch
@@ -867,13 +868,15 @@ function initAttempt(trick) {
   newMeter('leap');
 }
 
-/* Configure the oscillating timing meter for a phase */
+/* Configure the oscillating timing meter for a phase.
+   Speeds are deliberately gentle — this is a kids' game; the green zone
+   is wide and the marker is slow enough to react to. */
 function newMeter(phase) {
   let speed, zoneHalf;
-  if (phase === 'leap')  { speed = 0.022; zoneHalf = 0.14; }
-  else if (phase === 'air') { speed = 0.026; zoneHalf = 0.13; }
-  else { speed = 0.040; zoneHalf = 0.09; } // entry — fast & tight
-  if (config.board === 'high') speed *= 1.15;
+  if (phase === 'leap')      { speed = 0.012; zoneHalf = 0.20; }
+  else if (phase === 'air')  { speed = 0.013; zoneHalf = 0.18; }
+  else                       { speed = 0.018; zoneHalf = 0.14; } // entry — a bit quicker & tighter
+  if (config.board === 'high') speed *= 1.1;
   game.meter = { pos: 0, dir: 1, speed, zoneCenter: 0.5, zoneHalf };
 }
 
@@ -912,29 +915,42 @@ function update() {
   }
 
   if (game.phase === 'leap') {
+    // Stand on the board; wait (generously) for the launch tap.
     game.phaseTimer++;
-    if (game.phaseTimer > 150) lockLeap(0.2); // auto-fire (~2.5s)
+    if (game.phaseTimer > 360) lockLeap(0.2); // ~6s safety net
   }
   else if (game.phase === 'air') {
-    game.t += game.airSpeed;
-    if (game.trick === 'catch') updateBall();
-    if (game.t >= 0.85) enterPhase();
+    if (game.trick === 'catch') {
+      // Catch is a moving-target phase: fall steadily while the ball arcs.
+      game.t += game.airSpeed;
+      updateBall();
+      if (game.t >= 0.8) enterPhase();
+    } else if (!game.posed) {
+      // Hover near the top of the arc and wait for the POSE tap.
+      game.t = Math.min(0.18, game.t + game.airSpeed * 0.5);
+      game.phaseTimer++;
+      if (game.phaseTimer > 300) lockPose(0); // ~5s safety net
+    } else {
+      // Pose locked — now fall the rest of the way to the entry point.
+      game.t += game.airSpeed;
+      if (game.t >= 0.8) enterPhase();
+    }
   }
   else if (game.phase === 'entry') {
     if (!game.entering) {
-      // LOCK window: diver hovers just above the water waiting for the tap
+      // LOCK window: diver hovers just above the water waiting for the tap.
       game.phaseTimer++;
-      game.t = Math.min(0.85, game.t + game.airSpeed);
-      if (game.phaseTimer > 45) lockEntry(0); // ~0.75s window, messy if missed
+      game.t = Math.min(0.82, game.t + game.airSpeed * 0.5);
+      if (game.phaseTimer > 150) lockEntry(0); // ~2.5s window
     } else {
-      // locked — finish the plunge into the water, then splash
-      game.t += game.airSpeed * 1.6;
+      // Locked — finish the plunge into the water, then splash.
+      game.t += game.airSpeed * 1.4;
       if (game.t >= 1) hitWater();
     }
   }
   else if (game.phase === 'score') {
     game.scoreTimer++;
-    if (!game.scored && game.scoreTimer > 40) {
+    if (!game.scored && game.scoreTimer > 50) {
       game.scored = true;
       finishScore();
     }
@@ -956,8 +972,12 @@ function updateBall() {
 
 function ballPos() {
   const L = layout();
-  const bx = lerp(W * 1.05, W * 0.20, game.ballT);
-  const by = L.boardTopY + 40 + Math.sin(game.ballT * Math.PI) * -H * 0.10;
+  // Ball flies in from the right and crosses the screen, sinking through the
+  // mid zone the diver falls past so there's a real window to grab it.
+  const bx = lerp(W * 1.08, W * 0.30, game.ballT);
+  const topZone = L.boardTopY + (L.entryY - L.boardTopY) * 0.12;
+  const botZone = L.boardTopY + (L.entryY - L.boardTopY) * 0.45;
+  const by = lerp(topZone, botZone, game.ballT);
   return { bx, by };
 }
 
@@ -986,6 +1006,7 @@ function lockLeap(forcedAcc) {
 function lockPose(forcedAcc) {
   if (game.locked.pose) return;
   game.locked.pose = true;
+  game.posed = true;          // release the diver to fall the rest of the way
   game.results.poseAcc = (forcedAcc != null) ? forcedAcc : meterAccuracy();
   setPrompt('NICE!');
 }
@@ -997,7 +1018,7 @@ function grabBall() {
   const diverX = lerp(L.boardTipX, L.entryX, game.t) + game.catchOffset;
   const diverY = L.boardTopY + (L.entryY - L.boardTopY) * Math.pow(game.t, 1.5);
   const dist = Math.hypot(diverX - bx, diverY - by);
-  if (dist < 70) {
+  if (dist < 95) {
     game.ballCaught = true;
     game.results.caught = true;
     setPrompt('CAUGHT! 🏐');
